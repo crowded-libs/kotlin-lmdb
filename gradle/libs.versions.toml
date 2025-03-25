@@ -1,0 +1,18 @@
+[versions]
+kotlin = "2.1.20"
+dokka = "2.0.0"
+dokka-javadoc = "2.0.0"
+kotlinx-io = "0.7.0"
+jnr-constants = "0.10.4"
+jnr-ffi = "2.2.17"
+
+[libraries]
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
+kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinx-io" }
+jnr-constants = { module = "com.github.jnr:jnr-constants", version.ref = "jnr-constants" }
+jnr-ffi = { module = "com.github.jnr:jnr-ffi", version.ref = "jnr-ffi" }
+
+[plugins]
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
+dokka-javadoc = { id = "org.jetbrains.dokka-javadoc", version.ref = "dokka-javadoc" }
