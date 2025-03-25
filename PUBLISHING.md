@@ -55,8 +55,8 @@ After publishing to Sonatype's staging repository, you need to go to the [Sonaty
 ### 4. Verify Publication
 
 Once published, your artifact should be accessible at:
-- Maven Central: https://repo1.maven.org/maven2/com/github/kotlin-lmdb/
-- Sonatype: https://s01.oss.sonatype.org/content/repositories/releases/com/github/kotlin-lmdb/
+- Maven Central: https://repo1.maven.org/maven2/com/github/crowded-libs/
+- Sonatype: https://s01.oss.sonatype.org/content/repositories/releases/com/github/crowded-libs/
 
 ## Setting up a Development Version
 

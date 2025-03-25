@@ -3,8 +3,8 @@
 <div>
   <img src="kotlin-lmdb.png" alt="kotlin-lmdb logo" width="200" align="left" style="margin-right: 10px"/>
   <p>
-    <a href="https://github.com/kotlin-lmdb/kotlin-lmdb/actions/workflows/build.yml"><img src="https://github.com/kotlin-lmdb/kotlin-lmdb/actions/workflows/build.yml/badge.svg" alt="Build and Test"></a>
-    <a href="https://search.maven.org/search?q=g:%22com.github.kotlin-lmdb%22"><img src="https://img.shields.io/maven-central/v/com.github.kotlin-lmdb/kotlin-lmdb.svg?label=Maven%20Central" alt="Maven Central"></a>
+    <a href="https://github.com/crowded-libs/kotlin-lmdb/actions/workflows/build.yml"><img src="https://github.com/crowded-libs/kotlin-lmdb/actions/workflows/build.yml/badge.svg" alt="Build and Test"></a>
+    <a href="https://search.maven.org/search?q=g:%22com.github.crowded-libs%22"><img src="https://img.shields.io/maven-central/v/com.github.crowded-libs/kotlin-lmdb.svg?label=Maven%20Central" alt="Maven Central"></a>
     <a href="https://www.openldap.org/software/release/license.html"><img src="https://img.shields.io/badge/License-OpenLDAP-blue.svg" alt="License"></a>
   </p>
 </div>
