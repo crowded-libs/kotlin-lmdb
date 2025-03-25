@@ -5,7 +5,7 @@ plugins {
     id("signing")
 }
 
-group = "com.github.kotlin-lmdb"
+group = "com.github.crowded-libs"
 version = "0.1.0-SNAPSHOT"
 description = "Kotlin Multiplatform library for LMDB key-value store"
 
