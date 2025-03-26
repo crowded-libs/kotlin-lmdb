@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "com.github.crowded-libs"
-version = "0.1.0-SNAPSHOT"
+version = "0.1.0"
 description = "Kotlin Multiplatform library for LMDB key-value store"
 
 repositories {

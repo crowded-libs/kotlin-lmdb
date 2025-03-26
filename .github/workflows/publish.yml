@@ -1,0 +1,52 @@
+name: Publish
+on:
+  release:
+    types: [released, prereleased]
+jobs:
+  publish:
+    name: Release build and publish
+    runs-on: macOS-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Configure environment for macOS
+        run: |
+          # Create symbolic link in system library path
+          sudo mkdir -p /usr/local/lib/
+          sudo ln -sf $PWD/src/nativeInterop/cinterop/libs/macosArm64/liblmdb.dylib /usr/local/lib/liblmdb.dylib
+
+          # Set environment variable for JVM tests
+          echo "JAVA_TOOL_OPTIONS=-Dlmdb.native.lib=liblmdb.dylib" >> $GITHUB_ENV
+
+      - name: Cache Kotlin Native compiler and Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.konan
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-konan-gradle-${{ hashFiles('**/*.kts', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-konan-gradle-
+            ${{ runner.os }}-konan-
+            ${{ runner.os }}-
+
+      - name: Publish to MavenCentral
+        run: ./gradlew publishToMavenCentral --no-configuration-cache
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.SIGNING_KEY_ID }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_KEY_CONTENTS }}
