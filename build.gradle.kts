@@ -1,9 +1,9 @@
+import com.vanniktech.maven.publish.SonatypeHost
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.dokka)
-    alias(libs.plugins.dokka.javadoc)
-    id("maven-publish")
-    id("signing")
+    alias(libs.plugins.maven.publish)
 }
 
 group = "com.github.crowded-libs"
@@ -91,19 +91,11 @@ tasks {
 
 dokka {
     moduleName = project.name
-    dokkaSourceSets.configureEach {
-        includes.from("README.md")
-        sourceLink {
-            localDirectory.set(file("src/commonMain/kotlin"))
-            remoteUrl("https://github.com/crowded-libs/kotlin-lmdb/blob/main/src/commonMain/kotlin")
-        }
+    dokkaSourceSets {
+        named("commonMain")
+        named("jvmMain")
+        named("nativeMain")
     }
-}
-
-val dokkaJavadocJar by tasks.registering(Jar::class) {
-    description = "A Javadoc JAR containing Dokka Javadoc"
-    from(tasks.dokkaGeneratePublicationJavadoc.flatMap { it.outputDirectory })
-    archiveClassifier.set("javadoc")
 }
 
 val dokkaHtmlJar by tasks.registering(Jar::class) {
@@ -113,69 +105,38 @@ val dokkaHtmlJar by tasks.registering(Jar::class) {
 }
 
 // Configure publishing
-publishing {
-    publications {
-        register<MavenPublication>("kotlin-lmdb") {
-            groupId = group.toString()
-            version = version.toString()
-            description = project.description
-            pom {
-                name = project.name
-                groupId = group.toString()
-                version = version.toString()
-                description = project.description
-                url.set("https://github.com/crowded-libs/kotlin-lmdb")
+mavenPublishing {
+    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
 
-                licenses {
-                    license {
-                        name.set("OpenLDAP Public License")
-                        url.set("https://www.openldap.org/software/release/license.html")
-                        distribution.set("repo")
-                    }
-                }
-                developers {
-                    developer {
-                        id.set("coreykaylor")
-                        name.set("Corey Kaylor")
-                        email.set("corey@kaylors.net")
-                    }
-                }
+    signAllPublications()
 
-                scm {
-                    connection.set("scm:git:git://github.com/crowded-libs/kotlin-lmdb.git")
-                    developerConnection.set("scm:git:ssh://github.com/crowded-libs/kotlin-lmdb.git")
-                    url.set("https://github.com/crowded-libs/kotlin-lmdb")
-                }
-            }
-            artifact(dokkaJavadocJar)
-            artifact(dokkaHtmlJar)
-        }
-    }
-    
-    repositories {
-        maven {
-            name = "sonatype"
-            val releasesRepoUrl = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
-            val snapshotsRepoUrl = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/")
-            url = if (version.toString().endsWith("SNAPSHOT")) snapshotsRepoUrl else releasesRepoUrl
-            
-            credentials {
-                username = findProperty("ossrhUsername") as String? ?: System.getenv("OSSRH_USERNAME") 
-                password = findProperty("ossrhPassword") as String? ?: System.getenv("OSSRH_PASSWORD")
+    coordinates(group.toString(), "kotlin-lmdb", version.toString())
+
+    pom {
+        name = "kotlin-lmdb"
+        description = project.description
+        inceptionYear = "2025"
+        url = "https://github.com/crowded-libs/kotlin-lmdb"
+
+        licenses {
+            license {
+                name = "OpenLDAP Public License"
+                url = "https://www.openldap.org/software/release/license.html"
+                distribution = "repo"
             }
         }
-    }
-}
+        developers {
+            developer {
+                id.set("coreykaylor")
+                name.set("Corey Kaylor")
+                email.set("corey@kaylors.net")
+            }
+        }
 
-// Configure signing
-signing {
-    val signingKey = findProperty("signing.key") as String? ?: System.getenv("SIGNING_KEY")
-    val signingPassword = findProperty("signing.password") as String? ?: System.getenv("SIGNING_PASSWORD")
-    
-    if (signingKey != null && signingPassword != null) {
-        useInMemoryPgpKeys(signingKey, signingPassword)
-        sign(publishing.publications)
-    } else {
-        isRequired = false // Don't require signing for local builds
+        scm {
+            url = "https://github.com/crowded-libs/kotlin-lmdb"
+            connection = "scm:git:git://github.com/crowded-libs/kotlin-lmdb.git"
+            developerConnection = "scm:git:ssh://github.com/crowded-libs/kotlin-lmdb.git"
+        }
     }
 }
