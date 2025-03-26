@@ -6,7 +6,7 @@ plugins {
     alias(libs.plugins.maven.publish)
 }
 
-group = "com.github.crowded-libs"
+group = "io.github.crowded-libs"
 version = "0.1.0"
 description = "Kotlin Multiplatform library for LMDB key-value store"
 
