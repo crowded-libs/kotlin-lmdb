@@ -81,7 +81,7 @@ actual class Txn internal actual constructor(val env: Env, parent: Txn?, vararg 
         return db
     }
 
-    actual fun get(dbi: Dbi, key: Val) : Triple<Int, Val, Val> {
+    actual fun get(dbi: Dbi, key: Val) : ValResult {
         val mdbData = Val.output()
         val code = mdb_get(ptr, dbi.dbi, key.mdbVal.ptr, mdbData.mdbVal.ptr)
         return buildReadResult(code, key, mdbData)

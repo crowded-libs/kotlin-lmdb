@@ -10,9 +10,9 @@ internal fun checkRead(result: Int) : Int {
     throw LmdbException(native_mdb_strerror(result))
 }
 
-internal fun buildResult(result: Int, key: Val, data: Val) : Triple<Int,Val,Val> {
+internal fun buildResult(result: Int, key: Val, data: Val) : ValResult {
     if(result == 0) //success
-        return Triple(result, key, data)
+        return ValResult(result, key, data)
     throw getException(result)
 }
 
@@ -21,9 +21,9 @@ private fun getException(result: Int) : LmdbException {
     return LmdbException(error)
 }
 
-internal fun buildReadResult(result: Int, key: Val, data: Val) : Triple<Int,Val,Val> {
+internal fun buildReadResult(result: Int, key: Val, data: Val) : ValResult {
     if(result == 0 || result == -30798) //success or not found
-        return Triple(result, key, data)
+        return ValResult(result, key, data)
     throw getException(result)
 }
 

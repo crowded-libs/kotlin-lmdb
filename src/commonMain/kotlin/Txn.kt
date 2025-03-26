@@ -224,7 +224,7 @@ expect class Txn : AutoCloseable {
      * @return A Triple containing (status, key, data). Status is 0 for success, or an error code.
      *         The key and data values are only valid if status is 0.
      */
-    fun get(dbi: Dbi, key: Val): Triple<Int, Val, Val>
+    fun get(dbi: Dbi, key: Val): ValResult
 
     /**
      * Stores a key/data pair in a database.
@@ -412,3 +412,5 @@ enum class TxnState {
  * This is used for custom key and data comparison functions in databases.
  */
 typealias ValCompare = (Val, Val) -> Int
+
+

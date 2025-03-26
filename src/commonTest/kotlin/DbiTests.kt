@@ -92,12 +92,12 @@ class DbiTests {
                 cursor.use {
                     var count = 0
                     val result = cursor.first()
-                    assertEquals(0, result.first)
+                    assertEquals(0, result.resultCode)
                     
                     do {
                         count++
                         val nextResult = cursor.next()
-                        if (nextResult.first != 0) break
+                        if (nextResult.resultCode != 0) break
                     } while (true)
                     
                     assertEquals(3, count)
@@ -177,12 +177,12 @@ class DbiTests {
                 val cursor = openCursor(dbi)
                 cursor.use {
                     val firstResult = cursor.first()
-                    assertEquals(0, firstResult.first)
-                    assertNotNull(firstResult.second.toByteArray())
+                    assertEquals(0, firstResult.resultCode)
+                    assertNotNull(firstResult.key.toByteArray())
                     
                     // Count the entries
                     var count = 1 // already counted first()
-                    while (cursor.next().first == 0) {
+                    while (cursor.next().resultCode == 0) {
                         count++
                     }
                     assertEquals(3, count)
@@ -221,13 +221,13 @@ class DbiTests {
                     // Count the values for this key
                     var count = 1 // already counted from set()
                     
-                    val firstValue = cursor.getCurrent().third.toByteArray()!!
+                    val firstValue = cursor.getCurrent().data.toByteArray()!!
                     assertNotNull(firstValue)
                     
                     while (true) {
                         val nextResult = cursor.next()
-                        if (nextResult.first != 0 || 
-                            !nextResult.second.toByteArray()!!.contentEquals(key)) break
+                        if (nextResult.resultCode != 0 ||
+                            !nextResult.key.toByteArray()!!.contentEquals(key)) break
                         count++
                     }
                     
@@ -270,18 +270,18 @@ class DbiTests {
                 val cursor = openCursor(dbi)
                 cursor.use {
                     val firstResult = cursor.first()
-                    assertEquals(0, firstResult.first)
+                    assertEquals(0, firstResult.resultCode)
                     
                     // Integer keys should be in ascending order
-                    assertContentEquals(key1, firstResult.second.toByteArray()!!)
+                    assertContentEquals(key1, firstResult.key.toByteArray()!!)
                     
                     val nextResult1 = cursor.next()
-                    assertEquals(0, nextResult1.first)
-                    assertContentEquals(key2, nextResult1.second.toByteArray()!!)
+                    assertEquals(0, nextResult1.resultCode)
+                    assertContentEquals(key2, nextResult1.key.toByteArray()!!)
                     
                     val nextResult2 = cursor.next()
-                    assertEquals(0, nextResult2.first)
-                    assertContentEquals(key3, nextResult2.second.toByteArray()!!)
+                    assertEquals(0, nextResult2.resultCode)
+                    assertContentEquals(key3, nextResult2.key.toByteArray()!!)
                 }
                 
                 dbi.close()
@@ -309,7 +309,7 @@ class DbiTests {
                 // Verify the data is gone by trying to read it
                 val result = get(dbi2, "key".encodeToByteArray())
                 // Should not find the key (non-zero result means not found)
-                assertNotEquals(0, result.first, "Key should not exist after dropping the database")
+                assertNotEquals(0, result.resultCode, "Key should not exist after dropping the database")
                 
                 dbi2.close()
             }
@@ -333,7 +333,7 @@ class DbiTests {
                 // Verify data exists
                 val cursor = openCursor(dbi)
                 cursor.use {
-                    if (cursor.first().first == 0) {
+                    if (cursor.first().resultCode == 0) {
                         hasData = true
                     }
                 }
@@ -348,7 +348,7 @@ class DbiTests {
                     afterCursor.use {
                         val firstResult = afterCursor.first()
                         // First should fail with non-zero status if DB is empty
-                        assertTrue(firstResult.first != 0, "Database should be empty after calling empty()")
+                        assertTrue(firstResult.resultCode != 0, "Database should be empty after calling empty()")
                     }
                 }
                 
@@ -374,8 +374,8 @@ class DbiTests {
                 
                 // Read it back
                 val getResult = get(dbi, "key".encodeToByteArray())
-                assertEquals(0, getResult.first)
-                assertContentEquals("value".encodeToByteArray(), getResult.third.toByteArray()!!)
+                assertEquals(0, getResult.resultCode)
+                assertContentEquals("value".encodeToByteArray(), getResult.data.toByteArray()!!)
                 
                 dbi.close()
             }
@@ -405,8 +405,8 @@ class DbiTests {
                 
                 // Verify the original value is still there
                 val getResult = get(dbi, key)
-                assertEquals(0, getResult.first)
-                assertContentEquals(originalValue, getResult.third.toByteArray()!!)
+                assertEquals(0, getResult.resultCode)
+                assertContentEquals(originalValue, getResult.data.toByteArray()!!)
                 
                 dbi.close()
             }
@@ -442,12 +442,12 @@ class DbiTests {
                 cursor.use {
                     var count = 0
                     val firstResult = cursor.first()
-                    assertEquals(0, firstResult.first)
+                    assertEquals(0, firstResult.resultCode)
                     
                     do {
                         count++
                         val nextResult = cursor.next()
-                        if (nextResult.first != 0) break
+                        if (nextResult.resultCode != 0) break
                     } while (true)
                     
                     assertEquals(2, count)
@@ -480,15 +480,15 @@ class DbiTests {
                 // Each database should only see its own data
                 // Database 1 should find its own key
                 val getResult1 = get(dbi1, key1)
-                assertEquals(0, getResult1.first, "Database 1 should find its own key")
+                assertEquals(0, getResult1.resultCode, "Database 1 should find its own key")
                 
                 // Database 2 should find its own key
                 val getResult2 = get(dbi2, key2)
-                assertEquals(0, getResult2.first, "Database 2 should find its own key")
+                assertEquals(0, getResult2.resultCode, "Database 2 should find its own key")
                 
                 // Database 1 shouldn't see Database 2's key
                 val getResult3 = get(dbi1, key2)
-                assertNotEquals(0, getResult3.first, "Database 1 should not see Database 2's key")
+                assertNotEquals(0, getResult3.resultCode, "Database 1 should not see Database 2's key")
                 
                 dbi1.close()
                 dbi2.close()
@@ -511,8 +511,8 @@ class DbiTests {
             env.beginTxn {
                 val dbi = dbiOpen("persistent-db")
                 val getResult = get(dbi, "key".encodeToByteArray())
-                assertEquals(0, getResult.first)
-                assertContentEquals("value".encodeToByteArray(), getResult.third.toByteArray()!!)
+                assertEquals(0, getResult.resultCode)
+                assertContentEquals("value".encodeToByteArray(), getResult.data.toByteArray()!!)
             }
         }
     }
@@ -542,18 +542,18 @@ class DbiTests {
                 cursor.use {
                     // First key should be the shortest
                     val firstResult = cursor.first()
-                    assertEquals(0, firstResult.first)
-                    assertContentEquals(keyShort, firstResult.second.toByteArray()!!)
+                    assertEquals(0, firstResult.resultCode)
+                    assertContentEquals(keyShort, firstResult.key.toByteArray()!!)
                     
                     // Next key should be medium length
                     val nextResult = cursor.next()
-                    assertEquals(0, nextResult.first)
-                    assertContentEquals(keyMedium, nextResult.second.toByteArray()!!)
+                    assertEquals(0, nextResult.resultCode)
+                    assertContentEquals(keyMedium, nextResult.key.toByteArray()!!)
                     
                     // Last key should be the longest
                     val lastResult = cursor.next()
-                    assertEquals(0, lastResult.first)
-                    assertContentEquals(keyLong, lastResult.second.toByteArray()!!)
+                    assertEquals(0, lastResult.resultCode)
+                    assertContentEquals(keyLong, lastResult.key.toByteArray()!!)
                 }
                 
                 dbi.close()
@@ -584,18 +584,18 @@ class DbiTests {
                 cursor.use {
                     // First key should be the lexicographically highest
                     val firstResult = cursor.first()
-                    assertEquals(0, firstResult.first)
-                    assertContentEquals(keyC, firstResult.second.toByteArray()!!)
+                    assertEquals(0, firstResult.resultCode)
+                    assertContentEquals(keyC, firstResult.key.toByteArray()!!)
                     
                     // Next key should be the middle value
                     val nextResult = cursor.next()
-                    assertEquals(0, nextResult.first)
-                    assertContentEquals(keyB, nextResult.second.toByteArray()!!)
+                    assertEquals(0, nextResult.resultCode)
+                    assertContentEquals(keyB, nextResult.key.toByteArray()!!)
                     
                     // Last key should be the lexicographically lowest
                     val lastResult = cursor.next()
-                    assertEquals(0, lastResult.first)
-                    assertContentEquals(keyA, lastResult.second.toByteArray()!!)
+                    assertEquals(0, lastResult.resultCode)
+                    assertContentEquals(keyA, lastResult.key.toByteArray()!!)
                 }
                 
                 dbi.close()
@@ -633,12 +633,12 @@ class DbiTests {
                 cursor.use {
                     // First entry should exist
                     val firstResult = cursor.first()
-                    assertEquals(0, firstResult.first)
-                    assertNotNull(firstResult.second.toByteArray())
+                    assertEquals(0, firstResult.resultCode)
+                    assertNotNull(firstResult.key.toByteArray())
                     
                     // Iterate through all entries, counting them
                     var count = 1 // We've already got one
-                    while (cursor.next().first == 0) {
+                    while (cursor.next().resultCode == 0) {
                         count++
                     }
                     
@@ -647,13 +647,13 @@ class DbiTests {
                     
                     // Verify we can find each specific key
                     val find1 = cursor.set(key1)
-                    assertEquals(0, find1.first, "Should find key 1")
+                    assertEquals(0, find1.resultCode, "Should find key 1")
                     
                     val find10 = cursor.set(key10)
-                    assertEquals(0, find10.first, "Should find key 10")
+                    assertEquals(0, find10.resultCode, "Should find key 10")
                     
                     val find256 = cursor.set(key256)
-                    assertEquals(0, find256.first, "Should find key 256")
+                    assertEquals(0, find256.resultCode, "Should find key 256")
                 }
                 
                 dbi.close()
@@ -686,21 +686,21 @@ class DbiTests {
                 cursor.use {
                     // Position at first entry for our key
                     val setResult = cursor.set(key)
-                    assertEquals(0, setResult.first)
+                    assertEquals(0, setResult.resultCode)
                     
                     // First value should be the shortest
-                    val firstValue = setResult.third.toByteArray()!!
+                    val firstValue = setResult.data.toByteArray()!!
                     assertContentEquals(valueShort, firstValue)
                     
                     // Next value should be medium length
                     val nextResult = cursor.next()
-                    assertEquals(0, nextResult.first)
-                    assertContentEquals(valueMedium, nextResult.third.toByteArray()!!)
+                    assertEquals(0, nextResult.resultCode)
+                    assertContentEquals(valueMedium, nextResult.data.toByteArray()!!)
                     
                     // Last value should be the longest
                     val lastResult = cursor.next()
-                    assertEquals(0, lastResult.first)
-                    assertContentEquals(valueLong, lastResult.third.toByteArray()!!)
+                    assertEquals(0, lastResult.resultCode)
+                    assertContentEquals(valueLong, lastResult.data.toByteArray()!!)
                 }
                 
                 dbi.close()
@@ -745,20 +745,20 @@ class DbiTests {
                 cursor.use {
                     // First should be keyC (highest in reverse order)
                     val firstResult = cursor.first()
-                    assertEquals(0, firstResult.first)
-                    assertContentEquals(keyC, firstResult.second.toByteArray()!!)
+                    assertEquals(0, firstResult.resultCode)
+                    assertContentEquals(keyC, firstResult.key.toByteArray()!!)
                     
                     // Get all values for keyC - should be in length order
                     var valuesForKeyC = mutableListOf<ByteArray>()
                     do {
                         val currentResult = cursor.getCurrent()
-                        val currentKey = currentResult.second.toByteArray()!!
+                        val currentKey = currentResult.key.toByteArray()!!
                         
                         // Break when we move to a different key
                         if (!currentKey.contentEquals(keyC)) break
                         
-                        valuesForKeyC.add(currentResult.third.toByteArray()!!)
-                    } while (cursor.next().first == 0)
+                        valuesForKeyC.add(currentResult.data.toByteArray()!!)
+                    } while (cursor.next().resultCode == 0)
                     
                     // Should have 3 values for keyC, in length order
                     assertEquals(3, valuesForKeyC.size)
@@ -768,13 +768,13 @@ class DbiTests {
                     
                     // Current position should now be at keyB
                     val currentResult = cursor.getCurrent()
-                    assertContentEquals(keyB, currentResult.second.toByteArray()!!)
+                    assertContentEquals(keyB, currentResult.key.toByteArray()!!)
                     
                     // Verify keyA is last (lowest in reverse order)
                     var foundKeyA = false
-                    while (cursor.next().first == 0) {
+                    while (cursor.next().resultCode == 0) {
                         val result = cursor.getCurrent()
-                        val key = result.second.toByteArray()!!
+                        val key = result.key.toByteArray()!!
                         if (key.contentEquals(keyA)) {
                             foundKeyA = true
                             break

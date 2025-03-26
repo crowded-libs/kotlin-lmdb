@@ -317,17 +317,17 @@ class TxnTests {
                     var foundValue3 = false
                     
                     val firstResult = cursor2.getCurrent()
-                    if (firstResult.third.toByteArray()?.decodeToString() == "value1") {
+                    if (firstResult.data.toByteArray()?.decodeToString() == "value1") {
                         foundValue1 = true
-                    } else if (firstResult.third.toByteArray()?.decodeToString() == "value3") {
+                    } else if (firstResult.data.toByteArray()?.decodeToString() == "value3") {
                         foundValue3 = true
                     }
                     
                     val nextResult = cursor2.nextDuplicate()
-                    if (nextResult.first == 0) {
-                        if (nextResult.third.toByteArray()?.decodeToString() == "value1") {
+                    if (nextResult.resultCode == 0) {
+                        if (nextResult.data.toByteArray()?.decodeToString() == "value1") {
                             foundValue1 = true
-                        } else if (nextResult.third.toByteArray()?.decodeToString() == "value3") {
+                        } else if (nextResult.data.toByteArray()?.decodeToString() == "value3") {
                             foundValue3 = true
                         }
                     }
@@ -377,16 +377,16 @@ class TxnTests {
                 cursor.use {
                     // First key should be 'a' in normal ordering
                     val firstResult = cursor.first()
-                    assertEquals(0, firstResult.first)
-                    assertEquals("a", firstResult.second.toByteArray()!!.decodeToString())
+                    assertEquals(0, firstResult.resultCode)
+                    assertEquals("a", firstResult.key.toByteArray()!!.decodeToString())
                     
                     val nextResult = cursor.next()
-                    assertEquals(0, nextResult.first)
-                    assertEquals("b", nextResult.second.toByteArray()!!.decodeToString())
+                    assertEquals(0, nextResult.resultCode)
+                    assertEquals("b", nextResult.key.toByteArray()!!.decodeToString())
                     
                     val lastResult = cursor.next()
-                    assertEquals(0, lastResult.first)
-                    assertEquals("c", lastResult.second.toByteArray()!!.decodeToString())
+                    assertEquals(0, lastResult.resultCode)
+                    assertEquals("c", lastResult.key.toByteArray()!!.decodeToString())
                 }
                 
                 commit()
@@ -423,18 +423,18 @@ class TxnTests {
                     
                     // Get current value (first duplicate)
                     var result = cursor.getCurrent()
-                    assertEquals(0, result.first)
-                    values.add(result.third.toByteArray()!!.decodeToString())
+                    assertEquals(0, result.resultCode)
+                    values.add(result.data.toByteArray()!!.decodeToString())
                     
                     // Get next duplicate
                     result = cursor.nextDuplicate()
-                    assertEquals(0, result.first)
-                    values.add(result.third.toByteArray()!!.decodeToString())
+                    assertEquals(0, result.resultCode)
+                    values.add(result.data.toByteArray()!!.decodeToString())
                     
                     // Get final duplicate
                     result = cursor.nextDuplicate()
-                    assertEquals(0, result.first)
-                    values.add(result.third.toByteArray()!!.decodeToString())
+                    assertEquals(0, result.resultCode)
+                    values.add(result.data.toByteArray()!!.decodeToString())
                     
                     // Verify all values are present
                     assertTrue(values.contains("valueA"))

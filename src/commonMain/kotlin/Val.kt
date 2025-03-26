@@ -43,9 +43,9 @@ expect fun ByteArray.toVal(): Val
  *
  * @return The value as a ByteArray, or null if the operation failed (status != 0)
  */
-fun Triple<Int, Val, Val>.toValueByteArray() =
-    if(this.first == 0) {
-       this.third.toByteArray()
+fun ValResult.toValueByteArray() =
+    if(this.resultCode == 0) {
+       this.data.toByteArray()
     } else {
         null
     }
@@ -59,9 +59,9 @@ fun Triple<Int, Val, Val>.toValueByteArray() =
  *
  * @return The key as a ByteArray, or null if the operation failed (status != 0)
  */
-fun Triple<Int, Val, Val>.toKeyByteArray() =
-    if(this.first == 0) {
-        this.second.toByteArray()
+fun ValResult.toKeyByteArray() =
+    if(this.resultCode == 0) {
+        this.key.toByteArray()
     } else {
         null
     }

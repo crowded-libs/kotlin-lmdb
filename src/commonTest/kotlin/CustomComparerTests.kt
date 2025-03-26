@@ -49,23 +49,23 @@ class CustomComparerTests {
                     cursor.use {
                         // Space comes first in ASCII
                         val firstResult = cursor.first()
-                        assertEquals(0, firstResult.first)
-                        assertContentEquals(keySpace, firstResult.second.toByteArray()!!)
+                        assertEquals(0, firstResult.resultCode)
+                        assertContentEquals(keySpace, firstResult.key.toByteArray()!!)
                         
                         // Then 'a'
                         val secondResult = cursor.next()
-                        assertEquals(0, secondResult.first)
-                        assertContentEquals(keyA, secondResult.second.toByteArray()!!)
+                        assertEquals(0, secondResult.resultCode)
+                        assertContentEquals(keyA, secondResult.key.toByteArray()!!)
                         
                         // Then 'b'
                         val thirdResult = cursor.next()
-                        assertEquals(0, thirdResult.first)
-                        assertContentEquals(keyB, thirdResult.second.toByteArray()!!)
+                        assertEquals(0, thirdResult.resultCode)
+                        assertContentEquals(keyB, thirdResult.key.toByteArray()!!)
                         
                         // Then 'z'
                         val fourthResult = cursor.next()
-                        assertEquals(0, fourthResult.first)
-                        assertContentEquals(keyZ, fourthResult.second.toByteArray()!!)
+                        assertEquals(0, fourthResult.resultCode)
+                        assertContentEquals(keyZ, fourthResult.key.toByteArray()!!)
                     }
                     
                     dbi.close()

@@ -13,20 +13,20 @@ actual class Cursor(txn: Txn, dbi: Dbi) : AutoCloseable {
         }
     }
 
-    internal actual fun get(option: CursorOption) : Triple<Int,Val,Val> {
+    internal actual fun get(option: CursorOption) : ValResult {
         val key = Val.output()
         val data = Val.output()
         val result = mdb_cursor_get(ptr, key.mdbVal.ptr, data.mdbVal.ptr, getMdbCursorOp(option))
         return buildReadResult(result, key, data)
     }
 
-    internal actual fun get(key: Val, option: CursorOption): Triple<Int, Val, Val> {
+    internal actual fun get(key: Val, option: CursorOption): ValResult {
         val mdbData = Val.output()
         val result = mdb_cursor_get(ptr, key.mdbVal.ptr, mdbData.mdbVal.ptr, getMdbCursorOp(option))
         return buildReadResult(result, key, mdbData)
     }
 
-    internal actual fun get(key: Val, data: Val, option: CursorOption): Triple<Int, Val, Val> {
+    internal actual fun get(key: Val, data: Val, option: CursorOption): ValResult {
         val result = mdb_cursor_get(ptr, key.mdbVal.ptr, data.mdbVal.ptr, getMdbCursorOp(option))
         return buildReadResult(result, key, data)
     }
@@ -52,7 +52,7 @@ actual class Cursor(txn: Txn, dbi: Dbi) : AutoCloseable {
         CursorOption.SET_RANGE -> MDB_cursor_op.MDB_SET_RANGE
     }
 
-    internal actual fun put(key: Val, data: Val, option: CursorPutOption): Triple<Int, Val, Val> {
+    internal actual fun put(key: Val, data: Val, option: CursorPutOption): ValResult {
         val result = mdb_cursor_put(ptr, key.mdbVal.ptr, data.mdbVal.ptr, option.option)
         return buildReadResult(result, key, data)
     }

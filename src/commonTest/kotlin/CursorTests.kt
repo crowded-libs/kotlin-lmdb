@@ -32,13 +32,13 @@ class CursorTests {
                     val key1 = "key1".encodeToByteArray()
                     val data1 = "data1".encodeToByteArray()
                     val putResult = cursor.put(key1, data1)
-                    assertEquals(0, putResult.first)
+                    assertEquals(0, putResult.resultCode)
                     
                     // Get data using set
                     val getResult = cursor.set(key1)
-                    assertEquals(0, getResult.first)
-                    assertEquals("key1", getResult.second.toByteArray()!!.decodeToString())
-                    assertEquals("data1", getResult.third.toByteArray()!!.decodeToString())
+                    assertEquals(0, getResult.resultCode)
+                    assertEquals("key1", getResult.key.toByteArray()!!.decodeToString())
+                    assertEquals("data1", getResult.data.toByteArray()!!.decodeToString())
                 }
             }
         }
@@ -66,27 +66,27 @@ class CursorTests {
                     
                     // Test first
                     val firstResult = cursor.first()
-                    assertEquals(0, firstResult.first)
-                    assertEquals("a", firstResult.second.toByteArray()!!.decodeToString())
-                    assertEquals("data-a", firstResult.third.toByteArray()!!.decodeToString())
+                    assertEquals(0, firstResult.resultCode)
+                    assertEquals("a", firstResult.key.toByteArray()!!.decodeToString())
+                    assertEquals("data-a", firstResult.data.toByteArray()!!.decodeToString())
                     
                     // Test next
                     val nextResult = cursor.next()
-                    assertEquals(0, nextResult.first)
-                    assertEquals("b", nextResult.second.toByteArray()!!.decodeToString())
-                    assertEquals("data-b", nextResult.third.toByteArray()!!.decodeToString())
+                    assertEquals(0, nextResult.resultCode)
+                    assertEquals("b", nextResult.key.toByteArray()!!.decodeToString())
+                    assertEquals("data-b", nextResult.data.toByteArray()!!.decodeToString())
                     
                     // Test last
                     val lastResult = cursor.last()
-                    assertEquals(0, lastResult.first)
-                    assertEquals("d", lastResult.second.toByteArray()!!.decodeToString())
-                    assertEquals("data-d", lastResult.third.toByteArray()!!.decodeToString())
+                    assertEquals(0, lastResult.resultCode)
+                    assertEquals("d", lastResult.key.toByteArray()!!.decodeToString())
+                    assertEquals("data-d", lastResult.data.toByteArray()!!.decodeToString())
                     
                     // Test previous
                     val prevResult = cursor.previous()
-                    assertEquals(0, prevResult.first)
-                    assertEquals("c", prevResult.second.toByteArray()!!.decodeToString())
-                    assertEquals("data-c", prevResult.third.toByteArray()!!.decodeToString())
+                    assertEquals(0, prevResult.resultCode)
+                    assertEquals("c", prevResult.key.toByteArray()!!.decodeToString())
+                    assertEquals("data-c", prevResult.data.toByteArray()!!.decodeToString())
                 }
             }
         }
@@ -109,9 +109,9 @@ class CursorTests {
                     
                     // Get current position
                     val currentResult = cursor.getCurrent()
-                    assertEquals(0, currentResult.first)
-                    assertEquals("testkey", currentResult.second.toByteArray()!!.decodeToString())
-                    assertEquals("testdata", currentResult.third.toByteArray()!!.decodeToString())
+                    assertEquals(0, currentResult.resultCode)
+                    assertEquals("testkey", currentResult.key.toByteArray()!!.decodeToString())
+                    assertEquals("testdata", currentResult.data.toByteArray()!!.decodeToString())
                 }
             }
         }
@@ -132,15 +132,15 @@ class CursorTests {
                     
                     // Successful lookup with exact key and data match
                     val successResult = cursor.getBoth(key, data)
-                    assertEquals(0, successResult.first)
-                    assertEquals("testkey", successResult.second.toByteArray()!!.decodeToString())
-                    assertEquals("testdata", successResult.third.toByteArray()!!.decodeToString())
+                    assertEquals(0, successResult.resultCode)
+                    assertEquals("testkey", successResult.key.toByteArray()!!.decodeToString())
+                    assertEquals("testdata", successResult.data.toByteArray()!!.decodeToString())
                     
                     // Failed lookup with mismatched data
                     try {
                         val wrongData = "wrongdata".encodeToByteArray()
                         val failResult = cursor.getBoth(key, wrongData)
-                        assertNotEquals(0, failResult.first) // Should fail with non-zero status
+                        assertNotEquals(0, failResult.resultCode) // Should fail with non-zero status
                     } catch (e: LmdbException) {
                         // Expected exception for not found
                         assertTrue(e.message!!.contains("not found"))
@@ -167,9 +167,9 @@ class CursorTests {
                     // Search for a range match
                     val searchData = "b".encodeToByteArray()
                     val rangeResult = cursor.getBothRange(key, searchData)
-                    assertEquals(0, rangeResult.first)
-                    assertEquals("testkey", rangeResult.second.toByteArray()!!.decodeToString())
-                    assertEquals("bbb", rangeResult.third.toByteArray()!!.decodeToString()) // Finds "bbb" as first match for "b"
+                    assertEquals(0, rangeResult.resultCode)
+                    assertEquals("testkey", rangeResult.key.toByteArray()!!.decodeToString())
+                    assertEquals("bbb", rangeResult.data.toByteArray()!!.decodeToString()) // Finds "bbb" as first match for "b"
                 }
             }
         }
@@ -190,9 +190,9 @@ class CursorTests {
                     
                     // Find first entry >= b
                     val rangeResult = cursor.setRange("b".encodeToByteArray())
-                    assertEquals(0, rangeResult.first)
-                    assertEquals("b20", rangeResult.second.toByteArray()!!.decodeToString())
-                    assertEquals("data-b20", rangeResult.third.toByteArray()!!.decodeToString())
+                    assertEquals(0, rangeResult.resultCode)
+                    assertEquals("b20", rangeResult.key.toByteArray()!!.decodeToString())
+                    assertEquals("data-b20", rangeResult.data.toByteArray()!!.decodeToString())
                 }
             }
         }
@@ -221,7 +221,7 @@ class CursorTests {
                     val lookupResult = cursor.set(key)
                     // In some implementations a not-found might return a non-zero code
                     // rather than throwing exception
-                    assertNotEquals(0, lookupResult.first) 
+                    assertNotEquals(0, lookupResult.resultCode)
                 }
             }
         }
@@ -253,12 +253,12 @@ class CursorTests {
                     val lastKey = "zkey".encodeToByteArray()
                     val lastData = "zdata".encodeToByteArray()
                     val appendResult = cursor.putAppend(lastKey, lastData)
-                    assertEquals(0, appendResult.first)
+                    assertEquals(0, appendResult.resultCode)
                     
                     // Verify it's at the end
                     cursor.last()
                     val currentEntry = cursor.getCurrent()
-                    assertEquals("zkey", currentEntry.second.toByteArray()!!.decodeToString())
+                    assertEquals("zkey", currentEntry.key.toByteArray()!!.decodeToString())
                 }
             }
         }
@@ -287,16 +287,16 @@ class CursorTests {
                     
                     // Get the first entry
                     var result = cursor.getCurrent()
-                    if (result.first == 0) {
+                    if (result.resultCode == 0) {
                         count++
-                        foundKeys.add(result.second.toByteArray()!!.decodeToString())
+                        foundKeys.add(result.key.toByteArray()!!.decodeToString())
                         
                         // Get remaining entries
                         while (true) {
                             result = cursor.next()
-                            if (result.first != 0) break
+                            if (result.resultCode != 0) break
                             count++
-                            foundKeys.add(result.second.toByteArray()!!.decodeToString())
+                            foundKeys.add(result.key.toByteArray()!!.decodeToString())
                         }
                     }
                     
@@ -325,7 +325,7 @@ class CursorTests {
                 val cursor2 = openCursor(dbi)
                 cursor2.use {
                     val result = cursor2.set("key1".encodeToByteArray())
-                    assertEquals(0, result.first)
+                    assertEquals(0, result.resultCode)
                 }
             }
         }
@@ -381,7 +381,7 @@ class CursorTests {
                     try {
                         cursor.set(key)
                         // If we get here, at least one value still exists
-                        val data = cursor.getCurrent().third.toByteArray()!!.decodeToString()
+                        val data = cursor.getCurrent().data.toByteArray()!!.decodeToString()
                         // Should find only valueB now
                         assertEquals("valueB", data)
                     } catch (e: LmdbException) {
@@ -406,7 +406,7 @@ class CursorTests {
                     
                     // First put should succeed
                     val result1 = cursor.putNoDuplicateData(key, data)
-                    assertEquals(0, result1.first)
+                    assertEquals(0, result1.resultCode)
                     
                     // Second put with same data should fail
                     try {
@@ -418,7 +418,7 @@ class CursorTests {
                     
                     // Different data for same key should succeed
                     val result3 = cursor.putNoDuplicateData(key, "differentdata".encodeToByteArray())
-                    assertEquals(0, result3.first)
+                    assertEquals(0, result3.resultCode)
                 }
             }
         }

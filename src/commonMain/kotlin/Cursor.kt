@@ -48,25 +48,25 @@ expect class Cursor : AutoCloseable {
      * Internal implementation for cursor retrieval operations.
      * Users should use the extension functions like [next], [first], etc. instead.
      */
-    internal fun get(option: CursorOption): Triple<Int, Val, Val>
+    internal fun get(option: CursorOption): ValResult
     
     /** 
      * Internal implementation for cursor retrieval operations with a key parameter.
      * Users should use the extension functions like [set], [setKey], etc. instead.
      */
-    internal fun get(key: Val, option: CursorOption): Triple<Int, Val, Val>
+    internal fun get(key: Val, option: CursorOption): ValResult
     
     /** 
      * Internal implementation for cursor retrieval operations with key and data parameters.
      * Users should use the extension functions like [getBoth], [getBothRange], etc. instead.
      */
-    internal fun get(key: Val, data: Val, option: CursorOption): Triple<Int, Val, Val>
+    internal fun get(key: Val, data: Val, option: CursorOption): ValResult
     
     /** 
      * Internal implementation for cursor put operations.
      * Users should use the extension functions like [put], [putCurrent], etc. instead.
      */
-    internal fun put(key: Val, data: Val, option: CursorPutOption): Triple<Int, Val, Val>
+    internal fun put(key: Val, data: Val, option: CursorPutOption): ValResult
     
     /**
      * Deletes the key/data pair at the current cursor position.
@@ -522,15 +522,15 @@ fun Cursor.putNoOverwrite(key: Val, data: Val) = put(key, data, CursorPutOption.
  *
  * @return A sequence of key/data pairs from the database
  */
-fun Cursor.asSequence(): Sequence<Triple<Int, Val, Val>> = sequence {
+fun Cursor.asSequence(): Sequence<ValResult> = sequence {
     var hasNext = true
     while (hasNext) {
         val result = next()
-        if (result.first == 0) {
+        if (result.resultCode == 0) {
             yield(result)
         } else {
             hasNext = false
-            check(result.first)
+            check(result.resultCode)
         }
     }
 }
