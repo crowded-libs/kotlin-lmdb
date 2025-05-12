@@ -1,13 +1,2 @@
 headers = lmdb.h mdb.c midl.c
 package = lmdb
-
-libraryPaths = libs/androidNativeArm32/liblmdb.so
-libraryPaths = libs/androidNativeArm64/liblmdb.so
-libraryPaths = libs/iosArm64/liblmdb.dylib
-libraryPaths = libs/iossimulatorArm64/liblmdb.dylib
-libraryPaths = libs/iossimulatorX64/liblmdb.dylib
-libraryPaths = libs/linuxArm64/liblmdb.so
-libraryPaths = libs/linuxX64/liblmdb.so
-libraryPaths = libs/macosArm64/liblmdb.dylib
-libraryPaths = libs/macosX64/liblmdb.dylib
-libraryPaths = libs/mingwX64/lmdb.dll

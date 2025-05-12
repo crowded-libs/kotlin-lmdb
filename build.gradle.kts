@@ -31,7 +31,7 @@ kotlin {
     }
     androidTarget {
         compilerOptions {
-            jvmTarget = JvmTarget.JVM_11
+            jvmTarget = JvmTarget.JVM_21
         }
     }
     mingwX64()
@@ -148,6 +148,11 @@ tasks {
         testLogging {
             showStandardStreams = true
         }
+    }
+
+    // Set duplicates strategy for all copy tasks to handle duplicate resources
+    withType<Copy> {
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
     }
 }
 
