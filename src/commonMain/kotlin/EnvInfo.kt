@@ -1,3 +1,5 @@
+package lmdb
+
 /**
  * Contains information about the LMDB environment.
  *

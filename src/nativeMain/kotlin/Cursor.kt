@@ -1,5 +1,6 @@
+package lmdb
+
 import kotlinx.cinterop.*
-import lmdb.*
 
 actual class Cursor(txn: Txn, dbi: Dbi) : AutoCloseable {
     private val arena = Arena()
@@ -65,10 +66,10 @@ actual class Cursor(txn: Txn, dbi: Dbi) : AutoCloseable {
         check(mdb_cursor_del(ptr, CursorDeleteOption.NO_DUP_DATA.option))
     }
     
-    actual fun countDuplicates(): ULong {
+    actual fun countDuplicates(): UInt {
         memScoped {
-            val countVar = alloc<ULongVar>()
-            check(mdb_cursor_count(ptr, countVar.ptr))
+            val countVar = alloc<UIntVar>()
+            check(mdb_cursor_count(ptr, countVar.ptr.reinterpret()))
             return countVar.value
         }
     }

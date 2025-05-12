@@ -1,5 +1,7 @@
-import Library.Companion.LMDB
-import Library.Companion.RUNTIME
+package lmdb
+
+import lmdb.Library.Companion.LMDB
+import lmdb.Library.Companion.RUNTIME
 import jnr.ffi.Memory.allocateDirect
 import jnr.ffi.NativeType
 import jnr.ffi.Pointer
@@ -36,7 +38,7 @@ actual class Dbi actual constructor(name: String?, tx: Txn, vararg options: DbiO
         val flagsRef = jnr.ffi.byref.IntByReference()
         check(LMDB.mdb_dbi_flags(tx.ptr, ptr, flagsRef))
         val flagsInt = flagsRef.value.toUInt()
-        return DbiOption.values().filter { (flagsInt and it.option) != 0u }.toSet()
+        return DbiOption.entries.filter { (flagsInt and it.option) != 0u }.toSet()
     }
     
     /**

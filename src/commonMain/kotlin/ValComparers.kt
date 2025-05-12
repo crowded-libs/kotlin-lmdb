@@ -1,3 +1,5 @@
+package lmdb
+
 /**
  * Registry of available Val comparison functions.
  * These enums represent named implementations that can be used

@@ -1,5 +1,6 @@
+package lmdb
+
 import kotlinx.cinterop.*
-import lmdb.*
 
 actual class Env : AutoCloseable {
     internal val ptr: CPointer<MDB_env>
@@ -23,9 +24,10 @@ actual class Env : AutoCloseable {
             field = value
         }
 
+    @OptIn(UnsafeNumber::class)
     actual var mapSize: ULong = 1024UL * 1024UL * 50UL
         set(value) {
-            check(mdb_env_set_mapsize(ptr, value))
+            check(mdb_env_set_mapsize(ptr, value.convert()))
             field = value
         }
 
@@ -63,7 +65,7 @@ actual class Env : AutoCloseable {
                 check(mdb_env_get_flags(ptr, flagsVar.ptr))
                 flagsVar.value
             }
-            return EnvOption.values().filter { flagsValue and it.option == it.option }.toSet()
+            return EnvOption.entries.filter { flagsValue and it.option == it.option }.toSet()
         }
         set(value) {
             // Get current flags first
@@ -84,25 +86,27 @@ actual class Env : AutoCloseable {
             field = value
         }
 
+    @OptIn(UnsafeNumber::class)
     actual val stat: Stat?
         get() {
             return memScoped {
                 val statPtr = alloc<MDB_stat>()
                 check(mdb_env_stat(ptr, statPtr.ptr))
                 Stat(
-                    statPtr.ms_branch_pages, statPtr.ms_depth, statPtr.ms_entries, statPtr.ms_leaf_pages,
-                    statPtr.ms_overflow_pages, statPtr.ms_psize
+                    statPtr.ms_branch_pages.convert(), statPtr.ms_depth, statPtr.ms_entries.convert(), statPtr.ms_leaf_pages.convert(),
+                    statPtr.ms_overflow_pages.convert(), statPtr.ms_psize
                 )
             }
         }
 
+    @OptIn(UnsafeNumber::class)
     actual val info: EnvInfo?
         get() {
             return memScoped {
             val envInfo = alloc<MDB_envinfo>()
             check(mdb_env_info(ptr, envInfo.ptr))
-                EnvInfo(envInfo.me_last_pgno, envInfo.me_last_txnid, envInfo.me_mapaddr.toLong().toULong(),
-                    envInfo.me_mapsize, envInfo.me_maxreaders, envInfo.me_numreaders)
+                EnvInfo(envInfo.me_last_pgno.convert(), envInfo.me_last_txnid.convert(), envInfo.me_mapaddr.toLong().toULong(),
+                    envInfo.me_mapsize.convert(), envInfo.me_maxreaders, envInfo.me_numreaders)
             }
         }
 

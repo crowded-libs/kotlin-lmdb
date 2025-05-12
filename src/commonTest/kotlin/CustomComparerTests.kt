@@ -1,3 +1,5 @@
+package lmdb
+
 import kotlin.test.*
 
 /**

@@ -1,16 +1,14 @@
-/**
- * JVM implementation of custom comparer utility functions
- */
+package lmdb
 
 /**
- * Register a custom comparer using the JVM implementation
+ * JVM implementation of registerCustomComparer
  */
 actual fun registerCustomComparer(slot: ValComparer, compareFunction: ValCompare) {
     ValComparerRegistry.registerCustomComparer(slot, compareFunction)
 }
 
 /**
- * Clear all custom comparers using the JVM implementation
+ * JVM implementation of clearCustomComparers
  */
 actual fun clearCustomComparers() {
     ValComparerRegistry.clearCustomComparers()

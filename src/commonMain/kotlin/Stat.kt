@@ -1,3 +1,5 @@
+package lmdb
+
 /**
  * Contains statistics about a database in the LMDB environment.
  *

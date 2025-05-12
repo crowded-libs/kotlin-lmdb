@@ -1,3 +1,5 @@
+package lmdb
+
 internal enum class CursorOption(val option: UInt) {
     FIRST(0u),
     FIRST_DUP(1u),

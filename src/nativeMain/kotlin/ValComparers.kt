@@ -1,5 +1,6 @@
+package lmdb
+
 import kotlinx.cinterop.*
-import lmdb.*
 
 // The actual implementation of ValComparerRegistry is in ValComparerRegistryImpl.kt
 
@@ -25,9 +26,6 @@ internal class ValComparerImpl {
             ValComparer.HASH_CODE to staticCFunction(::hashCodeCompareNative),
             ValComparer.REVERSE_HASH_CODE to staticCFunction(::reverseHashCodeCompareNative)
         )
-
-        // Map to store the wrapped versions of custom comparers
-        private val customComparerWrappers = mutableMapOf<ValComparer, CPointer<CFunction<(CPointer<MDB_val>?, CPointer<MDB_val>?) -> Int>>>()
 
         /**
          * Get a native CFunction for the LMDB comparison callback

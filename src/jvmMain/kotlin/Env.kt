@@ -1,5 +1,7 @@
+package lmdb
+
 import jnr.ffi.byref.PointerByReference
-import Library.Companion.LMDB
+import lmdb.Library.Companion.LMDB
 import jnr.ffi.Pointer
 import jnr.ffi.byref.IntByReference
 
@@ -60,7 +62,7 @@ actual class Env : AutoCloseable {
             val flagsRef = IntByReference()
             check(LMDB.mdb_env_get_flags(ptr, flagsRef))
             val flagsValue = flagsRef.value.toUInt()
-            return EnvOption.values().filter { flagsValue and it.option == it.option }.toSet()
+            return EnvOption.entries.filter { flagsValue and it.option == it.option }.toSet()
         }
         set(value) {
             // Get current flags first

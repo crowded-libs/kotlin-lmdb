@@ -1,3 +1,5 @@
+package lmdb
+
 /**
  * Exception thrown when an LMDB operation fails.
  *

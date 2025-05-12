@@ -1,7 +1,9 @@
-import Library.Companion.LMDB
+package lmdb
+
 import jnr.ffi.Pointer
 import jnr.ffi.byref.NativeLongByReference
 import jnr.ffi.byref.PointerByReference
+import lmdb.Library.Companion.LMDB
 
 actual class Cursor(txn: Txn, dbi: Dbi) : AutoCloseable {
     private val csrPtr = PointerByReference()
@@ -39,10 +41,10 @@ actual class Cursor(txn: Txn, dbi: Dbi) : AutoCloseable {
         check(LMDB.mdb_cursor_del(ptr, CursorDeleteOption.NO_DUP_DATA.option.toInt()))
     }
 
-    actual fun countDuplicates(): ULong {
+    actual fun countDuplicates(): UInt {
         val countPtr = NativeLongByReference()
         check(LMDB.mdb_cursor_count(ptr, countPtr))
-        return countPtr.value.toLong().toULong()
+        return countPtr.value.toInt().toUInt()
     }
     
     actual fun renew(txn: Txn) {

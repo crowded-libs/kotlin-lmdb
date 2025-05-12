@@ -1,4 +1,6 @@
 [versions]
+agp = "8.5.2"
+android-compileSdk = "34"
 kotlin = "2.1.20"
 dokka = "2.0.0"
 kotlinx-io = "0.7.0"
@@ -13,6 +15,7 @@ jnr-constants = { module = "com.github.jnr:jnr-constants", version.ref = "jnr-co
 jnr-ffi = { module = "com.github.jnr:jnr-ffi", version.ref = "jnr-ffi" }
 
 [plugins]
+androidLibrary = { id = "com.android.library", version.ref = "agp" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }

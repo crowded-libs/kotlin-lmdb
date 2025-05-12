@@ -1,6 +1,8 @@
-import Library.Companion.LMDB
-import Library.Companion.RUNTIME
-import TxnState.*
+package lmdb
+
+import lmdb.Library.Companion.LMDB
+import lmdb.Library.Companion.RUNTIME
+import lmdb.TxnState.*
 import jnr.ffi.Memory.allocateDirect
 import jnr.ffi.NativeType
 import jnr.ffi.Pointer

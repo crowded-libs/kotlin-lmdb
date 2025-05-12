@@ -1,3 +1,5 @@
+package lmdb
+
 import kotlinx.cinterop.toKString
 import kotlin.test.Test
 import kotlin.test.assertEquals

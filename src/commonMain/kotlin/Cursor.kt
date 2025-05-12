@@ -1,3 +1,4 @@
+package lmdb
 /**
  * Represents a cursor for traversing or modifying a database.
  *
@@ -107,7 +108,7 @@ expect class Cursor : AutoCloseable {
      *  - An invalid parameter was specified
      *  - The database wasn't opened with [DbiOption.DupSort]
      */
-    fun countDuplicates(): ULong
+    fun countDuplicates(): UInt
     
     /**
      * Renews a cursor handle on a new transaction.

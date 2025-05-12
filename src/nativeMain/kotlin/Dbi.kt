@@ -1,5 +1,6 @@
+package lmdb
+
 import kotlinx.cinterop.*
-import lmdb.*
 import kotlin.concurrent.Volatile
 
 actual class Dbi actual constructor(name: String?, tx: Txn, vararg options: DbiOption) : AutoCloseable {
@@ -16,6 +17,7 @@ actual class Dbi actual constructor(name: String?, tx: Txn, vararg options: DbiO
         dbi = dbiPtr.ptr.pointed.value
     }
 
+    @OptIn(UnsafeNumber::class)
     actual fun stat(tx: Txn) : Stat {
         val statPtr: CValue<MDB_stat> = cValue<MDB_stat>()
         memScoped {
@@ -25,8 +27,8 @@ actual class Dbi actual constructor(name: String?, tx: Txn, vararg options: DbiO
             statPtr.ptr.pointed
         }
         return Stat(
-            pointed.ms_branch_pages, pointed.ms_depth, pointed.ms_entries, pointed.ms_leaf_pages,
-            pointed.ms_overflow_pages, pointed.ms_psize
+            pointed.ms_branch_pages.convert(), pointed.ms_depth, pointed.ms_entries.convert(), pointed.ms_leaf_pages.convert(),
+            pointed.ms_overflow_pages.convert(), pointed.ms_psize
         )
     }
     
@@ -43,7 +45,7 @@ actual class Dbi actual constructor(name: String?, tx: Txn, vararg options: DbiO
             val flagsPtr = alloc<UIntVar>()
             check(mdb_dbi_flags(tx.ptr, dbi, flagsPtr.ptr))
             val flagsInt = flagsPtr.value
-            return DbiOption.values().filter { (flagsInt and it.option) != 0u }.toSet()
+            return DbiOption.entries.filter { (flagsInt and it.option) != 0u }.toSet()
         }
     }
     

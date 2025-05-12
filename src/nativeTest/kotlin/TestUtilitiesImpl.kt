@@ -1,81 +1,68 @@
+package lmdb
+
 import kotlinx.cinterop.*
-import lmdb.*
+
+// Global map to store custom comparers by slot
+private val customComparers = mutableMapOf<ValComparer, ValCompare>()
+
+// Global function that can be used with staticCFunction
+private fun customCompareFunction(left: CPointer<MDB_val>?, right: CPointer<MDB_val>?, slot: ValComparer): Int {
+    val comparer = customComparers[slot] ?: return 0
+    val a = Val.forCompare(left)
+    val b = Val.forCompare(right)
+    return comparer(a, b)
+}
+
+// Static C functions for each custom slot
+private val custom1CompareFunction = staticCFunction { left: CPointer<MDB_val>?, right: CPointer<MDB_val>? ->
+    customCompareFunction(left, right, ValComparer.CUSTOM_1)
+}
+
+private val custom2CompareFunction = staticCFunction { left: CPointer<MDB_val>?, right: CPointer<MDB_val>? ->
+    customCompareFunction(left, right, ValComparer.CUSTOM_2)
+}
+
+private val custom3CompareFunction = staticCFunction { left: CPointer<MDB_val>?, right: CPointer<MDB_val>? ->
+    customCompareFunction(left, right, ValComparer.CUSTOM_3)
+}
+
+private val custom4CompareFunction = staticCFunction { left: CPointer<MDB_val>?, right: CPointer<MDB_val>? ->
+    customCompareFunction(left, right, ValComparer.CUSTOM_4)
+}
 
 /**
- * Native implementation of custom comparer utility functions
- */
-
-// Map to store custom compare functions
-private val customCompareFunctions = mutableMapOf<ValComparer, ValCompare>()
-
-/**
- * Register a custom comparer using the Native implementation
- * This registers both a Kotlin function for API consistency and a native function
- * that calls into the appropriate top-level function based on the slot
+ * Native implementation of registerCustomComparer
+ * 
+ * This stores the Kotlin compareFunction in a global map and registers
+ * a pre-defined static C function with ValComparerRegistry.registerNativeCustomComparer
  */
 actual fun registerCustomComparer(slot: ValComparer, compareFunction: ValCompare) {
-    // Store the Kotlin function for later use by the native callback
-    customCompareFunctions[slot] = compareFunction
-    
-    // Register for API consistency
+    // Store the Kotlin function in our global map
+    customComparers[slot] = compareFunction
+
+    // Also register with ValComparerRegistry for compatibility
     ValComparerRegistry.registerCustomComparer(slot, compareFunction)
-    
-    // Register the appropriate native callback based on the slot
-    val nativeComparer = when (slot) {
-        ValComparer.CUSTOM_1 -> staticCFunction(::custom1ComparerNative)
-        ValComparer.CUSTOM_2 -> staticCFunction(::custom2ComparerNative)
-        ValComparer.CUSTOM_3 -> staticCFunction(::custom3ComparerNative)
-        ValComparer.CUSTOM_4 -> staticCFunction(::custom4ComparerNative)
-        else -> throw IllegalArgumentException("Only CUSTOM_1 through CUSTOM_4 supported")
+
+    // Register the appropriate static C function based on the slot
+    val nativeFunction = when (slot) {
+        ValComparer.CUSTOM_1 -> custom1CompareFunction
+        ValComparer.CUSTOM_2 -> custom2CompareFunction
+        ValComparer.CUSTOM_3 -> custom3CompareFunction
+        ValComparer.CUSTOM_4 -> custom4CompareFunction
+        else -> throw IllegalArgumentException("Only CUSTOM_1, CUSTOM_2, CUSTOM_3, or CUSTOM_4 slots can be registered")
     }
-    
-    // Register the native C function pointer
-    ValComparerRegistry.registerNativeCustomComparer(slot, nativeComparer)
+
+    // Register the native function
+    ValComparerRegistry.registerNativeCustomComparer(slot, nativeFunction)
 }
 
 /**
- * Clear all custom comparers using the Native implementation
+ * Native implementation of clearCustomComparers
  */
 actual fun clearCustomComparers() {
-    customCompareFunctions.clear()
+    // Clear our global map
+    customComparers.clear()
+
+    // Also clear the ValComparerRegistry
     ValComparerRegistry.clearCustomComparers()
-}
-
-// Top-level functions for each custom slot that don't capture any variables
-// These are used with staticCFunction and delegate to the stored compare functions
-
-fun custom1ComparerNative(left: CPointer<MDB_val>?, right: CPointer<MDB_val>?): Int {
-    val compareFunction = customCompareFunctions[ValComparer.CUSTOM_1] 
-        ?: return 0 // Default to 0 if not registered
-    
-    val a = Val.forCompare(left)
-    val b = Val.forCompare(right)
-    return compareFunction(a, b)
-}
-
-fun custom2ComparerNative(left: CPointer<MDB_val>?, right: CPointer<MDB_val>?): Int {
-    val compareFunction = customCompareFunctions[ValComparer.CUSTOM_2] 
-        ?: return 0 // Default to 0 if not registered
-    
-    val a = Val.forCompare(left)
-    val b = Val.forCompare(right)
-    return compareFunction(a, b)
-}
-
-fun custom3ComparerNative(left: CPointer<MDB_val>?, right: CPointer<MDB_val>?): Int {
-    val compareFunction = customCompareFunctions[ValComparer.CUSTOM_3] 
-        ?: return 0 // Default to 0 if not registered
-    
-    val a = Val.forCompare(left)
-    val b = Val.forCompare(right)
-    return compareFunction(a, b)
-}
-
-fun custom4ComparerNative(left: CPointer<MDB_val>?, right: CPointer<MDB_val>?): Int {
-    val compareFunction = customCompareFunctions[ValComparer.CUSTOM_4] 
-        ?: return 0 // Default to 0 if not registered
-    
-    val a = Val.forCompare(left)
-    val b = Val.forCompare(right)
-    return compareFunction(a, b)
 }

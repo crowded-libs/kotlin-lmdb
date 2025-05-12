@@ -1,3 +1,5 @@
+package lmdb
+
 enum class PutOption(val option: UInt) {
 
     /**

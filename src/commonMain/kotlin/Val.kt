@@ -1,3 +1,5 @@
+package lmdb
+
 /**
  * Represents a key or data value in the LMDB database.
  *

@@ -1,4 +1,5 @@
-import Library.Companion.LMDB
+package lmdb
+
 import jnr.ffi.Pointer
 
 // The actual implementation of ValComparerRegistry is in ValComparerRegistryImpl.kt

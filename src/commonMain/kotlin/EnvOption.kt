@@ -1,3 +1,5 @@
+package lmdb
+
 enum class EnvOption(val option: UInt)
 {
     /**

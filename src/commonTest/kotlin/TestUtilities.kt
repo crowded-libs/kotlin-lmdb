@@ -1,3 +1,5 @@
+package lmdb
+
 import kotlinx.io.files.*
 import kotlin.uuid.Uuid
 

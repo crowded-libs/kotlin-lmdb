@@ -1,3 +1,5 @@
+package lmdb
+
 internal fun check(result: Int) : Int {
     if(result == 0) //success
         return result

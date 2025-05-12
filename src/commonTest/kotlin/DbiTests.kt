@@ -1,3 +1,5 @@
+package lmdb
+
 import kotlin.test.*
 
 class DbiTests {
@@ -749,7 +751,7 @@ class DbiTests {
                     assertContentEquals(keyC, firstResult.key.toByteArray()!!)
                     
                     // Get all values for keyC - should be in length order
-                    var valuesForKeyC = mutableListOf<ByteArray>()
+                    val valuesForKeyC = mutableListOf<ByteArray>()
                     do {
                         val currentResult = cursor.getCurrent()
                         val currentKey = currentResult.key.toByteArray()!!

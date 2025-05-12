@@ -1,3 +1,5 @@
+package lmdb
+
 /**
  * Represents the version information of the LMDB library
  *

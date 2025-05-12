@@ -1,4 +1,6 @@
-import Library.Companion.MEMORY
+package lmdb
+
+import lmdb.Library.Companion.MEMORY
 import jnr.ffi.Pointer
 
 class MDBVal private constructor(val ptr: Pointer) {

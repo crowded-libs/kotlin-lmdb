@@ -1,5 +1,6 @@
+package lmdb
+
 import kotlinx.cinterop.*
-import lmdb.*
 
 /**
  * Returns the version information of the LMDB library for Native platform

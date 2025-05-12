@@ -1,3 +1,5 @@
+package lmdb
+
 enum class TxnOption(val option: UInt) {
 
     /**

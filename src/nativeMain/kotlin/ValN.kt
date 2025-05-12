@@ -1,6 +1,7 @@
+package lmdb
+
 import kotlinx.cinterop.*
 import kotlin.native.ref.createCleaner
-import lmdb.MDB_val
 import kotlin.experimental.ExperimentalNativeApi
 import kotlin.native.ref.Cleaner
 
@@ -17,6 +18,7 @@ actual class Val(val mdbVal: MDB_val, private val arena: Arena?) {
         arena?.clear()
     }
 
+    @OptIn(UnsafeNumber::class)
     actual fun toByteArray() : ByteArray? {
         val size = mdbVal.mv_size.toInt()
         return this.mdbVal.mv_data?.readBytes(size)
@@ -29,6 +31,7 @@ actual class Val(val mdbVal: MDB_val, private val arena: Arena?) {
             return Val(mdbVal, arena)
         }
 
+        @OptIn(UnsafeNumber::class)
         fun input(byteArray: ByteArray): Val = memScoped {
             val arena = Arena()
             return byteArray.usePinned { pinned ->

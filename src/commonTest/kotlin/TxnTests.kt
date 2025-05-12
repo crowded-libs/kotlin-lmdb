@@ -1,3 +1,5 @@
+package lmdb
+
 import kotlin.test.*
 
 class TxnTests {
@@ -11,7 +13,7 @@ class TxnTests {
             var dbi: Dbi? = null
             env.beginTxn {
                 dbi = dbiOpen()
-                put(dbi!!, key, expected.encodeToByteArray())
+                put(dbi, key, expected.encodeToByteArray())
                 commit()
             }
             env.beginTxn {
@@ -30,7 +32,7 @@ class TxnTests {
             var dbi: Dbi? = null
             env.beginTxn {
                 dbi = dbiOpen()
-                put(dbi!!, key, key)
+                put(dbi, key, key)
                 commit()
             }
             env.beginTxn {
@@ -89,7 +91,7 @@ class TxnTests {
             // Create and populate database
             env.beginTxn {
                 dbi = dbiOpen()
-                put(dbi!!, key, value)
+                put(dbi, key, value)
                 commit()
             }
             
@@ -157,7 +159,7 @@ class TxnTests {
             
             env.beginTxn {
                 dbi = dbiOpen()
-                put(dbi!!, key, value)
+                put(dbi, key, value)
                 commit()
             }
             
@@ -171,7 +173,7 @@ class TxnTests {
             
             // Should not be able to write
             assertFailsWith<LmdbException> {
-                readOnlyTxn.put(dbi!!, "new-key".encodeToByteArray(), "new-value".encodeToByteArray())
+                readOnlyTxn.put(dbi, "new-key".encodeToByteArray(), "new-value".encodeToByteArray())
             }
             
             readOnlyTxn.abort()
@@ -190,7 +192,7 @@ class TxnTests {
             
             env.beginTxn {
                 dbi = dbiOpen()
-                put(dbi!!, key, value)
+                put(dbi, key, value)
                 commit()
             }
             
@@ -208,7 +210,7 @@ class TxnTests {
             
             // Opening a new read-only transaction should work
             val txn2 = env.beginTxn(TxnOption.ReadOnly)
-            val (readCode2, _, readResult2) = txn2.get(dbi!!, key)
+            val (readCode2, _, readResult2) = txn2.get(dbi, key)
             assertEquals(0, readCode2)
             assertContentEquals(value, readResult2.toByteArray())
             txn2.abort()
@@ -224,7 +226,7 @@ class TxnTests {
             // Create named database with some data
             env.beginTxn {
                 dbi = dbiOpen("test-db", options = arrayOf(DbiOption.Create))
-                put(dbi!!, "key1".encodeToByteArray(), "value1".encodeToByteArray())
+                put(dbi, "key1".encodeToByteArray(), "value1".encodeToByteArray())
                 commit()
             }
             
@@ -246,8 +248,8 @@ class TxnTests {
             // Create database with some data
             env.beginTxn {
                 dbi = dbiOpen(options = arrayOf(DbiOption.Create))
-                put(dbi!!, "key1".encodeToByteArray(), "value1".encodeToByteArray())
-                put(dbi!!, "key2".encodeToByteArray(), "value2".encodeToByteArray())
+                put(dbi, "key1".encodeToByteArray(), "value1".encodeToByteArray())
+                put(dbi, "key2".encodeToByteArray(), "value2".encodeToByteArray())
                 commit()
             }
             
@@ -259,20 +261,20 @@ class TxnTests {
                 assertEquals("value1", val1.toByteArray()!!.decodeToString())
                 
                 // Test second key
-                val (code2, _, val2) = get(dbi!!, "key2".encodeToByteArray())
+                val (code2, _, val2) = get(dbi, "key2".encodeToByteArray())
                 assertEquals(0, code2)
                 assertEquals("value2", val2.toByteArray()!!.decodeToString())
                 
                 // Add more data
-                put(dbi!!, "key3".encodeToByteArray(), "value3".encodeToByteArray())
+                put(dbi, "key3".encodeToByteArray(), "value3".encodeToByteArray())
                 
                 // And read it back
-                val (code3, _, val3) = get(dbi!!, "key3".encodeToByteArray())
+                val (code3, _, val3) = get(dbi, "key3".encodeToByteArray())
                 assertEquals(0, code3)
                 assertEquals("value3", val3.toByteArray()!!.decodeToString())
                 
                 // Non-existent key should return null value
-                val result4 = get(dbi!!, "nonexistent".encodeToByteArray()).toValueByteArray()
+                val result4 = get(dbi, "nonexistent".encodeToByteArray()).toValueByteArray()
                 assertNull(result4)
             }
         }
@@ -290,27 +292,27 @@ class TxnTests {
                 dbi = dbiOpen(options = arrayOf(DbiOption.DupSort))
                 
                 // Add multiple values for same key
-                put(dbi!!, key, "value1".encodeToByteArray())
-                put(dbi!!, key, "value2".encodeToByteArray())
-                put(dbi!!, key, "value3".encodeToByteArray())
+                put(dbi, key, "value1".encodeToByteArray())
+                put(dbi, key, "value2".encodeToByteArray())
+                put(dbi, key, "value3".encodeToByteArray())
                 
                 // Use openCursor to verify all values are present
-                val cursor = openCursor(dbi!!)
+                val cursor = openCursor(dbi)
                 cursor.use {
                     cursor.set(key)
                     val count = cursor.countDuplicates()
-                    assertEquals(3UL, count)
+                    assertEquals(3U, count)
                 }
                 
                 // Delete specific key-value pair
-                delete(dbi!!, key, "value2".encodeToByteArray())
+                delete(dbi, key, "value2".encodeToByteArray())
                 
                 // Verify only the specified value was deleted
-                val cursor2 = openCursor(dbi!!)
+                val cursor2 = openCursor(dbi)
                 cursor2.use {
                     cursor2.set(key)
                     val count = cursor2.countDuplicates()
-                    assertEquals(2UL, count)
+                    assertEquals(2U, count)
                     
                     // Should still find value1 and value3
                     var foundValue1 = false
@@ -415,7 +417,7 @@ class TxnTests {
                     
                     // Count duplicates - should be 3
                     val count = cursor.countDuplicates()
-                    assertEquals(3UL, count)
+                    assertEquals(3U, count)
                     
                     // We won't test specific ordering since that can vary by implementation
                     // Just ensure all values exist
@@ -490,10 +492,10 @@ class TxnTests {
                 dbi = dbiOpen(options = arrayOf(DbiOption.Create))
                 
                 // Add data
-                put(dbi!!, "defaultKey".encodeToByteArray(), "defaultValue".encodeToByteArray())
+                put(dbi, "defaultKey".encodeToByteArray(), "defaultValue".encodeToByteArray())
                 
                 // Verify data
-                val (code, _, value) = get(dbi!!, "defaultKey".encodeToByteArray())
+                val (code, _, value) = get(dbi, "defaultKey".encodeToByteArray())
                 assertEquals(0, code)
                 assertEquals("defaultValue", value.toByteArray()!!.decodeToString())
                 

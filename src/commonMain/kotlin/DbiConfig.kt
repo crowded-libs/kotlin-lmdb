@@ -1,3 +1,5 @@
+package lmdb
+
 /**
  * Configuration for database operations that specifies custom comparison functions.
  *

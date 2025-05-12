@@ -1,3 +1,5 @@
+package lmdb
+
 enum class DbiOption(val option: UInt) {
 
     /**

@@ -1,3 +1,5 @@
+package lmdb
+
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
@@ -353,7 +355,7 @@ class CursorTests {
                     
                     // Count duplicates
                     val count = cursor.countDuplicates()
-                    assertEquals(3UL, count)
+                    assertEquals(3U, count)
                 }
             }
         }

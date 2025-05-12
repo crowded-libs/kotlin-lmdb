@@ -1,6 +1,7 @@
-import TxnState.*
+package lmdb
+
+import lmdb.TxnState.*
 import kotlinx.cinterop.*
-import lmdb.*
 
 actual class Txn internal actual constructor(val env: Env, parent: Txn?, vararg options: TxnOption) : AutoCloseable {
     private val arena = Arena()
@@ -8,11 +9,12 @@ actual class Txn internal actual constructor(val env: Env, parent: Txn?, vararg 
     internal val ptr: CPointer<MDB_txn>
     internal actual var state: TxnState
     private var isClosed = false
-    
+
+    @OptIn(UnsafeNumber::class)
     actual val id: ULong
         get() {
             checkReady()
-            return mdb_txn_id(ptr)
+            return mdb_txn_id(ptr).toULong()
         }
 
     internal actual constructor(env: Env, vararg options: TxnOption) : this(env, null, *options)
@@ -62,22 +64,22 @@ actual class Txn internal actual constructor(val env: Env, parent: Txn?, vararg 
     actual fun dbiOpen(name: String?, vararg options: DbiOption) : Dbi {
         return Dbi(name, this, *options)
     }
-    
+
     actual fun dbiOpen(name: String?, config: DbiConfig, vararg options: DbiOption) : Dbi {
         val db = Dbi(name, this, *options)
-        
+
         // Set key comparer if provided
         config.keyComparer?.let { comparer ->
             val keyCompareFn = ValComparerImpl.getComparerCallback(comparer)
             check(mdb_set_compare(ptr, db.dbi, keyCompareFn))
         }
-        
+
         // Set duplicate data comparer if provided
         config.dupComparer?.let { comparer ->
             val dupCompareFn = ValComparerImpl.getComparerCallback(comparer)
             check(mdb_set_dupsort(ptr, db.dbi, dupCompareFn))
         }
-        
+
         return db
     }
 

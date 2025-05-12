@@ -1,3 +1,4 @@
+package lmdb
 /**
  * Represents an LMDB environment, which is the container for all database operations.
  * 

@@ -1,3 +1,5 @@
+package lmdb
+
 /**
  * JVM implementation of ValComparerRegistry
  */

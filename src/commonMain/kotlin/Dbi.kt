@@ -1,3 +1,4 @@
+package lmdb
 /**
  * Represents a database handle in the LMDB environment.
  *

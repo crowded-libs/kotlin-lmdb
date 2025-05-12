@@ -1,3 +1,5 @@
+package lmdb
+
 actual class Val(val mdbVal: MDBVal) {
     actual fun toByteArray() : ByteArray? = mdbVal.toByteArray()
 

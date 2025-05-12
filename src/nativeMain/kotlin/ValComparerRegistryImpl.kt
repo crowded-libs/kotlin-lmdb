@@ -1,5 +1,6 @@
+package lmdb
+
 import kotlinx.cinterop.*
-import lmdb.*
 
 /**
  * Native implementation of ValComparerRegistry

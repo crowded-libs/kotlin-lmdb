@@ -1,3 +1,5 @@
+package lmdb
+
 /**
  * Represents an LMDB transaction, which provides a consistent view of the database.
  *

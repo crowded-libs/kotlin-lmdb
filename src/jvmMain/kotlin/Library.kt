@@ -1,3 +1,5 @@
+package lmdb
+
 import jnr.ffi.LibraryLoader
 import jnr.ffi.Platform
 import jnr.ffi.Pointer
@@ -35,7 +37,7 @@ internal class Library {
             try {
                 if (SHOULD_USE_LIB) {
                     // Use explicitly specified library path
-                    libToLoad = System.getProperty(LMDB_NATIVE_LIB_PROP)
+                    libToLoad = System.getProperty(LMDB_NATIVE_LIB_PROP) ?: ""
                     if (DEBUG) println("[LMDB] Using specified library: $libToLoad")
                 } else {
                     // Auto-detect library name
@@ -57,7 +59,7 @@ internal class Library {
                             if (file.exists()) {
                                 if (DEBUG) println("[LMDB] File exists at specified path")
                                 // Load file from absolute path
-                                System.load(file.absolutePath)
+                                System.loadLibrary(file.absolutePath)
                                 // Now use LibraryLoader with default search to find the loaded library
                                 LMDB = loader.load(LIB_NAME)
                             } else {

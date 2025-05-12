@@ -1,5 +1,7 @@
+package lmdb
+
 import jnr.ffi.byref.IntByReference
-import Library.Companion.LMDB
+import lmdb.Library.Companion.LMDB
 
 /**
  * Returns the version information of the LMDB library for JVM platform

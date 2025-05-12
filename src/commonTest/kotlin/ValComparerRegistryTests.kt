@@ -1,3 +1,5 @@
+package lmdb
+
 import kotlin.test.*
 
 class ValComparerRegistryTests {
@@ -76,12 +78,12 @@ class ValComparerRegistryTests {
         val aa = byteArrayOf(1, 1).toVal()
         
         // Length comparison
-        assertEquals(0, compare1!!(a, b))  // Same length
-        assertEquals(-1, compare1!!(a, aa)) // Different length
+        assertEquals(0, compare1(a, b))  // Same length
+        assertEquals(-1, compare1(a, aa)) // Different length
         
         // First byte comparison
-        assertEquals(-1, compare2!!(a, b)) // 1 vs 2
-        assertEquals(0, compare2!!(a, aa)) // Both start with 1
+        assertEquals(-1, compare2(a, b)) // 1 vs 2
+        assertEquals(0, compare2(a, aa)) // Both start with 1
     }
     
     @Test
@@ -121,7 +123,7 @@ class ValComparerRegistryTests {
         val b = byteArrayOf(2).toVal()
         
         // Test initial behavior
-        assertEquals(1, compare1!!(a, b))
+        assertEquals(1, compare1(a, b))
         
         // Override with a new implementation
         ValComparerRegistry.registerCustomComparer(ValComparer.CUSTOM_1) { a, b -> -1 }
@@ -131,6 +133,6 @@ class ValComparerRegistryTests {
         assertNotNull(compare2)
         
         // Test new behavior
-        assertEquals(-1, compare2!!(a, b))
+        assertEquals(-1, compare2(a, b))
     }
 }
