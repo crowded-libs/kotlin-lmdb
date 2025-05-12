@@ -40,7 +40,7 @@ jobs:
               - 'gradle.properties'
               - 'settings.gradle.kts'
               - '.github/workflows/**'
-  
+
   build:
     name: Build and Test on ${{ matrix.os }}
     needs: changes
@@ -94,13 +94,17 @@ jobs:
         continue-on-error: true  # Continue even if tests fail
 
       # Run Native tests first
-      - name: Build and test Native (Linux & macOS)
-        if: runner.os != 'Windows'
-        run: ./gradlew nativeTest --info
+      - name: Build and test Native (Linux)
+        if: runner.os == 'Linux'
+        run: ./gradlew linuxX64Test --info
+
+      - name: Build and test Native (macOS)
+        if: runner.os == 'macOS'
+        run: ./gradlew macosX64Test macosArm64Test --info
 
       - name: Build and test Native (Windows)
         if: runner.os == 'Windows'
-        run: .\gradlew.bat nativeTest --info
+        run: .\gradlew.bat mingwX64Test --info
 
       # Complete the build process
       - name: Complete build process (Linux & macOS)
@@ -111,7 +115,7 @@ jobs:
             echo "Full build failed, retrying without JVM tests"
             ./gradlew build --no-daemon -x jvmTest
           }
-        
+
       - name: Complete build process (Windows)
         if: runner.os == 'Windows'
         shell: cmd
@@ -132,14 +136,14 @@ jobs:
             **/build/reports/tests/
             **/build/test-results/
           retention-days: 7
-          
+
       - name: Test Summary
         uses: test-summary/action@v2
         if: always()
         with:
           paths: "**/build/test-results/**/TEST-*.xml"
           show: "fail, skip"
-          
+
       - name: Set Build Status Badge (Unix)
         if: github.ref == 'refs/heads/main' && always() && runner.os != 'Windows'
         run: |
@@ -149,7 +153,7 @@ jobs:
             echo "BUILD_STATUS=Failing" >> $GITHUB_ENV
           fi
           echo "Build Status: ${{ env.BUILD_STATUS }}"
-          
+
       - name: Set Build Status Badge (Windows)
         if: github.ref == 'refs/heads/main' && always() && runner.os == 'Windows' 
         shell: pwsh

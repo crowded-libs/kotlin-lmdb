@@ -71,11 +71,16 @@ kotlin {
             }
             languageSettings.optIn("kotlinx.io.core.ExperimentalIO")
         }
-        val jvmMain by getting {
+        // Create a common JVM-based source set that both JVM and Android can depend on
+        val jvmAndroidMain by creating { 
+            dependsOn(commonMain)
             dependencies {
                 implementation(libs.jnr.constants)
                 implementation(libs.jnr.ffi)
             }
+        }
+        val jvmMain by getting {
+            dependsOn(jvmAndroidMain)
         }
         val nativeMain by creating { 
             dependsOn(commonMain)
@@ -112,8 +117,16 @@ kotlin {
         val tvosArm64Test by getting { dependsOn(tvosTest) }
         val tvosSimulatorArm64Test by getting { dependsOn(tvosTest) }
 
-        val androidMain by getting { dependsOn(jvmMain) }
-        val androidUnitTest by getting { dependsOn(jvmTest.get()) }
+        // Create a common JVM-based test source set
+        val jvmAndroidTest by creating { 
+            dependsOn(commonTest)
+        }
+        val jvmTest by getting { 
+            dependsOn(jvmAndroidTest)
+        }
+
+        val androidMain by getting { dependsOn(jvmAndroidMain) }
+        val androidUnitTest by getting { dependsOn(jvmAndroidTest) }
 
         val macosMain by creating { dependsOn(nativeMain) }
         val macosX64Main by getting { dependsOn(macosMain) }
