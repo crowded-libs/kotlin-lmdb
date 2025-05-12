@@ -65,45 +65,6 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      # Configure environment for Linux (for JVM bindings)
-      - name: Configure environment for Linux
-        if: runner.os == 'Linux'
-        run: |
-          # Create symbolic link in system library path
-          sudo mkdir -p /usr/local/lib/
-          sudo ln -sf $PWD/src/nativeInterop/cinterop/libs/linuxX64/liblmdb.so /usr/local/lib/liblmdb.so
-          sudo ldconfig
-          
-          # Set environment variable for JVM tests
-          echo "JAVA_TOOL_OPTIONS=-Dlmdb.native.lib=liblmdb.so" >> $GITHUB_ENV
-
-      # Configure environment for macOS (for JVM bindings)
-      - name: Configure environment for macOS
-        if: runner.os == 'macOS'
-        run: |
-          # Create symbolic link in system library path
-          sudo mkdir -p /usr/local/lib/
-          sudo ln -sf $PWD/src/nativeInterop/cinterop/libs/macosArm64/liblmdb.dylib /usr/local/lib/liblmdb.dylib
-          
-          # Set environment variable for JVM tests
-          echo "JAVA_TOOL_OPTIONS=-Dlmdb.native.lib=liblmdb.dylib" >> $GITHUB_ENV
-
-      # Configure environment for Windows (for JVM bindings)
-      - name: Configure environment for Windows
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          # Copy the DLL to a Windows-friendly path avoiding bash path issues
-          mkdir -p /c/lmdb_lib
-          cp $PWD/src/nativeInterop/cinterop/libs/mingwX64/lmdb.dll /c/lmdb_lib/
-          
-          # Enable debug mode and point to absolute Windows path
-          echo "JAVA_TOOL_OPTIONS=-Dlmdb.native.lib=C:/lmdb_lib/lmdb.dll -Dlmdb.debug=true" >> $GITHUB_ENV
-          echo "PATH=/c/lmdb_lib:$PATH" >> $GITHUB_ENV
-          
-          # Show the file exists for debugging
-          ls -la /c/lmdb_lib/
-
       - name: Cache Kotlin Native compiler and Gradle dependencies
         uses: actions/cache@v4
         with:
