@@ -20,15 +20,6 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Configure environment for macOS
-        run: |
-          # Create symbolic link in system library path
-          sudo mkdir -p /usr/local/lib/
-          sudo ln -sf $PWD/src/nativeInterop/cinterop/libs/macosArm64/liblmdb.dylib /usr/local/lib/liblmdb.dylib
-
-          # Set environment variable for JVM tests
-          echo "JAVA_TOOL_OPTIONS=-Dlmdb.native.lib=liblmdb.dylib" >> $GITHUB_ENV
-
       - name: Cache Kotlin Native compiler and Gradle dependencies
         uses: actions/cache@v4
         with:
