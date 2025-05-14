@@ -9,6 +9,7 @@ import kotlin.test.*
 class CustomComparerTests {
     
     @Test
+    @IgnoreWasmJs
     fun `can register and use custom comparers with database`() {
         val env = createRandomTestEnv(maxDatabases = 10u)
         env.use {

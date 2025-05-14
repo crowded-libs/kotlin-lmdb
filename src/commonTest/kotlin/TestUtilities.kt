@@ -1,31 +1,16 @@
 package lmdb
 
-import kotlinx.io.files.*
-import kotlin.uuid.Uuid
+/**
+ * Platform-specific function to create a test directory
+ * This handles the differences between platforms (JVM/Native vs JS)
+ */
+expect fun pathCreateTestDir(): String
 
-fun pathCreateTestDir() : String {
-    val fs = SystemFileSystem
-    val testPath = Path(SystemTemporaryDirectory.toString(), Uuid.random().toString())
-    if (!fs.exists(testPath)) {
-        fs.createDirectories(testPath, true)
-    }
-    return testPath.toString()
-}
-
-fun createRandomTestEnv(open: Boolean = true, mapSize: ULong? = null, maxDatabases: UInt? = null) : Env {
-    val path = pathCreateTestDir()
-    val env = Env()
-    if(mapSize != null) {
-        env.mapSize = mapSize
-    }
-    if(maxDatabases != null) {
-        env.maxDatabases = maxDatabases
-    }
-    if (open) {
-        env.open(path)
-    }
-    return env
-}
+/**
+ * Platform-specific function to create a random test environment
+ * This handles the differences between platforms (JVM/Native vs JS)
+ */
+expect fun createRandomTestEnv(open: Boolean = true, mapSize: ULong? = null, maxDatabases: UInt? = null): Env
 
 /**
  * Platform-specific function to register a custom comparer

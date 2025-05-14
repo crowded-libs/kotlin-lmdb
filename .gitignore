@@ -13,3 +13,6 @@ lmdb/lmdb/
 
 .DS_Store
 .externalNativeBuild
+/.claude/
+/.ai/
+/.junie/

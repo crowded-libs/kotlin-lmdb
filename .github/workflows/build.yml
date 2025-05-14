@@ -65,6 +65,12 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Setup Emscripten (for wasmJs target)
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: '3.1.51'
+          actions-cache-folder: 'emsdk-cache'
+
       - name: Cache Kotlin Native compiler and Gradle dependencies
         uses: actions/cache@v4
         with:
@@ -81,6 +87,15 @@ jobs:
       - name: Make gradlew executable (Unix)
         if: runner.os != 'Windows'
         run: chmod +x ./gradlew
+
+      - name: Set EMCC_PATH environment variable (Unix)
+        if: runner.os != 'Windows'
+        run: echo "EMCC_PATH=$EMSDK/upstream/emscripten/emcc" >> $GITHUB_ENV
+
+      - name: Set EMCC_PATH environment variable (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: echo "EMCC_PATH=$env:EMSDK/upstream/emscripten/emcc.bat" >> $env:GITHUB_ENV
 
       # Run JVM tests with properly installed LMDB libraries
       - name: Build and test JVM (Linux & macOS)
@@ -105,6 +120,15 @@ jobs:
       - name: Build and test Native (Windows)
         if: runner.os == 'Windows'
         run: .\gradlew.bat mingwX64Test --info
+
+      # Run wasmJs tests on Linux and macOS (Chrome required for browser tests)
+      - name: Build and test wasmJs (Linux)
+        if: runner.os == 'Linux'
+        run: ./gradlew wasmJsTest --info
+
+      - name: Build and test wasmJs (macOS)
+        if: runner.os == 'macOS'
+        run: ./gradlew wasmJsTest --info
 
       # Complete the build process
       - name: Complete build process (Linux & macOS)

@@ -520,6 +520,7 @@ class DbiTests {
     }
 
     @Test
+    @IgnoreWasmJs
     fun `database with custom key comparer sorts keys according to the comparer`() {
         val env = createRandomTestEnv(maxDatabases = 10u)
         env.use {
@@ -564,6 +565,7 @@ class DbiTests {
     }
     
     @Test
+    @IgnoreWasmJs
     fun `database with REVERSE_LEXICOGRAPHIC_STRING key comparer sorts strings in reverse`() {
         val env = createRandomTestEnv(maxDatabases = 10u)
         env.use {
@@ -606,6 +608,7 @@ class DbiTests {
     }
     
     @Test
+    @IgnoreWasmJs
     fun `database with INTEGER_KEY comparer handles integer keys`() {
         val env = createRandomTestEnv(maxDatabases = 10u)
         env.use {
@@ -664,6 +667,7 @@ class DbiTests {
     }
     
     @Test
+    @IgnoreWasmJs
     fun `database with DupSort and custom dupComparer sorts duplicate values according to comparer`() {
         val env = createRandomTestEnv(maxDatabases = 10u)
         env.use {
@@ -711,6 +715,7 @@ class DbiTests {
     }
     
     @Test
+    @IgnoreWasmJs
     fun `database with both custom key and duplicate comparers uses correct sorting for both`() {
         val env = createRandomTestEnv(maxDatabases = 10u)
         env.use {

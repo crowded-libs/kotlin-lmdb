@@ -1,6 +1,8 @@
 package lmdb
 
 import kotlinx.cinterop.*
+import kotlinx.io.files.*
+import kotlin.uuid.Uuid
 
 // Global map to store custom comparers by slot
 private val customComparers = mutableMapOf<ValComparer, ValCompare>()
@@ -65,4 +67,34 @@ actual fun clearCustomComparers() {
 
     // Also clear the ValComparerRegistry
     ValComparerRegistry.clearCustomComparers()
+}
+
+/**
+ * Native implementation of pathCreateTestDir
+ */
+actual fun pathCreateTestDir(): String {
+    val fs = SystemFileSystem
+    val testPath = Path(SystemTemporaryDirectory.toString(), Uuid.random().toString())
+    if (!fs.exists(testPath)) {
+        fs.createDirectories(testPath, true)
+    }
+    return testPath.toString()
+}
+
+/**
+ * Native implementation of createRandomTestEnv
+ */
+actual fun createRandomTestEnv(open: Boolean, mapSize: ULong?, maxDatabases: UInt?): Env {
+    val path = pathCreateTestDir()
+    val env = Env()
+    if (mapSize != null) {
+        env.mapSize = mapSize
+    }
+    if (maxDatabases != null) {
+        env.maxDatabases = maxDatabases
+    }
+    if (open) {
+        env.open(path)
+    }
+    return env
 }

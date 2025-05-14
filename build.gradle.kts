@@ -1,4 +1,7 @@
+@file:OptIn(ExperimentalWasmDsl::class)
+
 import com.vanniktech.maven.publish.SonatypeHost
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -47,6 +50,19 @@ kotlin {
     watchosSimulatorArm64()
     tvosArm64()
     tvosSimulatorArm64()
+    wasmJs {
+        browser {
+            testTask {
+                useKarma {
+                    useChromeHeadless()
+                }
+            }
+        }
+        nodejs()
+        compilerOptions {
+            freeCompilerArgs.add("-Xwasm-attach-js-exception")
+        }
+    }
 
     listOf(mingwX64(), linuxX64(), linuxArm64(), macosX64(), macosArm64(),
         iosArm64(), iosSimulatorArm64(), iosX64(), watchosArm32(),
@@ -71,17 +87,29 @@ kotlin {
             }
             languageSettings.optIn("kotlinx.io.core.ExperimentalIO")
         }
-        val jvmMain by getting {
+        val jvmCommonMain by creating {
+            dependsOn(commonMain)
             dependencies {
                 implementation(libs.jnr.constants)
                 implementation(libs.jnr.ffi)
             }
+        }
+        val jvmMain by getting {
+            dependsOn(jvmCommonMain)
         }
         val nativeMain by creating { 
             dependsOn(commonMain)
             languageSettings.optIn("kotlinx.cinterop.ExperimentalForeignApi")
         }
         val nativeTest by creating { dependsOn(commonTest) }
+
+
+        val wasmJsMain by getting {
+            dependsOn(commonMain)
+        }
+        val wasmJsTest by getting {
+            dependsOn(commonTest)
+        }
 
         val iosMain by creating { dependsOn(nativeMain) }
         val iosX64Main by getting { dependsOn(iosMain) }
@@ -112,12 +140,16 @@ kotlin {
         val tvosArm64Test by getting { dependsOn(tvosTest) }
         val tvosSimulatorArm64Test by getting { dependsOn(tvosTest) }
 
-        val jvmTest by getting { 
+        val jvmCommonTest by creating {
             dependsOn(commonTest)
         }
 
-        val androidMain by getting { dependsOn(jvmMain) }
-        val androidUnitTest by getting { dependsOn(jvmTest) }
+        val jvmTest by getting {
+            dependsOn(jvmCommonTest)
+        }
+
+        val androidMain by getting { dependsOn(jvmCommonMain) }
+        val androidUnitTest by getting { dependsOn(jvmCommonTest) }
 
         val macosMain by creating { dependsOn(nativeMain) }
         val macosX64Main by getting { dependsOn(macosMain) }
@@ -219,4 +251,192 @@ mavenPublishing {
             developerConnection = "scm:git:ssh://github.com/crowded-libs/kotlin-lmdb.git"
         }
     }
+}
+
+// Custom tasks for compiling and linking LMDB for WASM
+abstract class CompileLmdbWasmTask : DefaultTask() {
+    @get:InputDirectory
+    abstract val sourceDir: DirectoryProperty
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @get:Input
+    abstract val compiler: Property<String>
+
+    @get:Input
+    abstract val flags: ListProperty<String>
+
+    @TaskAction
+    fun compile() {
+        val outDir = outputDir.get().asFile
+        outDir.mkdirs()
+
+        val sourceFiles = sourceDir.get().asFile.listFiles { file ->
+            file.name.endsWith(".c")
+        } ?: emptyArray()
+
+        sourceFiles.forEach { sourceFile ->
+            val outputFile = File(outDir, sourceFile.nameWithoutExtension + ".o")
+
+            project.providers.exec {
+                commandLine(
+                    compiler.get(),
+                    "-c",
+                    "-o", outputFile.absolutePath,
+                    *flags.get().toTypedArray(),
+                    sourceFile.absolutePath
+                )
+            }.result.get().assertNormalExitValue()
+            
+            logger.lifecycle("Compiled ${sourceFile.name} to ${outputFile.name}")
+        }
+    }
+}
+
+abstract class LinkLmdbWasmTask : DefaultTask() {
+    @get:InputFiles
+    abstract val objectFiles: ConfigurableFileCollection
+
+    @get:OutputFile
+    abstract val outputFile: RegularFileProperty
+
+    @get:Input
+    abstract val linker: Property<String>
+
+    @get:Input
+    abstract val flags: ListProperty<String>
+
+    @get:InputFiles
+    @get:Optional
+    abstract val jsPrefix: ConfigurableFileCollection
+
+    @TaskAction
+    fun link() {
+        val output = outputFile.get().asFile
+        output.parentFile.mkdirs()
+
+        val linkArgs = mutableListOf<String>().apply {
+            add(linker.get())
+            add("-o")
+            add(output.absolutePath)
+            addAll(objectFiles.files.map { it.absolutePath })
+            addAll(flags.get())
+            
+            // Add JS prefix files if provided
+            jsPrefix.files.forEach { prefixFile ->
+                add("--extern-post-js")
+                add(prefixFile.absolutePath)
+            }
+        }
+
+        project.providers.exec {
+            commandLine(linkArgs)
+        }.result.get().assertNormalExitValue()
+        
+        logger.lifecycle("Linked LMDB WASM to ${output.name}")
+    }
+}
+
+// Configure LMDB compilation and linking for wasmJs
+val compileLmdbWasm by tasks.registering(CompileLmdbWasmTask::class) {
+    val emscriptenPath = System.getenv("EMCC_PATH") ?: "/opt/homebrew/bin/emcc"
+    sourceDir.set(file("src/nativeInterop/cinterop/c"))
+    outputDir.set(layout.buildDirectory.dir("lmdb-wasm/obj"))
+    compiler.set(emscriptenPath)
+    flags.set(listOf(
+        "-O2",
+        "-g",
+        "-DMDB_USE_POSIX_MUTEX=0",
+        "-DMDB_USE_ROBUST=0",
+    ))
+}
+
+val linkLmdbWasm by tasks.registering(LinkLmdbWasmTask::class) {
+    dependsOn(compileLmdbWasm)
+    
+    objectFiles.from(compileLmdbWasm.map { 
+        fileTree(it.outputDir) { include("*.o") }
+    })
+
+    val emscriptenPath = System.getenv("EMCC_PATH") ?: "/opt/homebrew/bin/emcc"
+    outputFile.set(layout.buildDirectory.file("lmdb-wasm/lmdb.js"))
+    linker.set(emscriptenPath)
+    
+    flags.set(listOf(
+        "-s", "WASM=1",
+        "-s", "EXPORT_ES6=1",
+        "-s", "MODULARIZE=1",
+        "-s", "EXPORT_NAME='loadLmdbWASM'",
+        "-s", "EXPORTED_FUNCTIONS=[" +
+            "'_mdb_env_create','_mdb_env_open','_mdb_env_close'," +
+            "'_mdb_env_set_maxdbs','_mdb_env_set_mapsize'," +
+            "'_mdb_env_get_maxreaders','_mdb_env_set_maxreaders'," +
+            "'_mdb_env_get_maxkeysize','_mdb_reader_check'," +
+            "'_mdb_env_get_flags','_mdb_env_set_flags'," +
+            "'_mdb_env_stat','_mdb_env_info'," +
+            "'_mdb_env_copy','_mdb_env_copy2','_mdb_env_sync'," +
+            "'_mdb_txn_begin','_mdb_txn_commit','_mdb_txn_abort'," +
+            "'_mdb_txn_reset','_mdb_txn_renew','_mdb_txn_id'," +
+            "'_mdb_dbi_open','_mdb_dbi_close','_mdb_drop'," +
+            "'_mdb_stat','_mdb_dbi_flags'," +
+            "'_mdb_cmp','_mdb_dcmp'," +
+            "'_mdb_get','_mdb_put','_mdb_del'," +
+            "'_mdb_cursor_open','_mdb_cursor_close'," +
+            "'_mdb_cursor_get','_mdb_cursor_put'," +
+            "'_mdb_cursor_del','_mdb_cursor_count'," +
+            "'_mdb_cursor_renew'," +
+            "'_mdb_strerror','_mdb_version'," +
+            "'_malloc','_free'," +
+            "'_mkdir','_access','_rmdir','_unlink'," +
+            "'_opendir','_readdir','_closedir'" +
+        "]",
+        "-s", "EXPORTED_RUNTIME_METHODS=['getValue','setValue','UTF8ToString','FS']",
+        "-s", "IMPORTED_MEMORY=1",
+        "-s", "ALLOW_MEMORY_GROWTH=1",
+        "-s", "MAXIMUM_MEMORY=2GB",
+        "-s", "INITIAL_MEMORY=16MB",
+        "-s", "FORCE_FILESYSTEM=1",
+        "-s", "FILESYSTEM=1",
+        "-lidbfs.js",
+        "-lnodefs.js",
+        "-s", "ERROR_ON_UNDEFINED_SYMBOLS=0",
+        "--no-entry"
+    ))
+}
+
+// Create a task to prepare LMDB WASM for inclusion in wasmJs resources
+val prepareLmdbWasmResources by tasks.registering(Copy::class) {
+    dependsOn(linkLmdbWasm)
+    
+    from(linkLmdbWasm.map { task ->
+        task.outputFile.get().asFile.parentFile
+    }) {
+        include("*.js")
+        include("*.wasm")
+        rename { filename ->
+            when {
+                filename.endsWith(".js") -> "lmdb.mjs"
+                else -> filename
+            }
+        }
+    }
+    
+    into(layout.projectDirectory.dir("src/wasmJsMain/resources"))
+}
+
+// Configure wasmJs compilation to depend on LMDB resources
+kotlin {
+    wasmJs().compilations.all {
+        if (name == "main") {
+            compileTaskProvider.configure {
+                dependsOn(prepareLmdbWasmResources)
+            }
+        }
+    }
+}
+
+// Fix task dependency issue
+tasks.named("wasmJsProcessResources") {
+    dependsOn(prepareLmdbWasmResources)
 }

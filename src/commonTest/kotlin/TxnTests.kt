@@ -112,6 +112,7 @@ class TxnTests {
     }
     
     @Test
+    @IgnoreWasmJs
     fun `txn nested transactions work correctly`() {
         val env = createRandomTestEnv(mapSize = 10485760UL)
         env.use {

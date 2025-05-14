@@ -55,6 +55,7 @@ class EnvTests {
     }
 
     @Test
+    @IgnoreWasmJs
     fun `can copy an environment and open afterwards`() {
         val path = pathCreateTestDir()
         val copyPath = pathCreateTestDir()
@@ -370,6 +371,7 @@ class EnvTests {
     }
     
     @Test
+    @IgnoreWasmJs
     fun `can copy env with compact option`() {
         val path = pathCreateTestDir()
         val copyPath = pathCreateTestDir()
