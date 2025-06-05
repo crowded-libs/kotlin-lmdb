@@ -277,7 +277,7 @@ internal class Library {
 
                 // Try a different approach - look for the file directly in the filesystem
                 for (resourcePath in resourcePaths) {
-                    val resourceFile = File("src/jvmMain/resources/$resourcePath")
+                    val resourceFile = File("src/jvmCommonMain/resources/$resourcePath")
                     println("[LMDB] Checking if file exists at: ${resourceFile.absolutePath}")
                     if (resourceFile.exists()) {
                         println("[LMDB] Found file at: ${resourceFile.absolutePath}")
