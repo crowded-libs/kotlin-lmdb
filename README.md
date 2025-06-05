@@ -19,7 +19,7 @@ kotlin-lmdb provides a type-safe, idiomatic Kotlin API for LMDB, one of the fast
 
 ### Key Benefits
 
-- **Cross-Platform Compatibility**: Works seamlessly on JVM, Android, and Native platforms (Linux, macOS, Windows, iOS, watchOS, tvOS).
+- **Cross-Platform Compatibility**: Works seamlessly on JVM, Android, Native platforms (Linux, macOS, Windows, iOS, watchOS, tvOS), and WebAssembly (wasmJs).
 - **Performance**: Direct bindings to native LMDB without additional layers for maximum performance
 - **Memory Efficiency**: Leverages LMDB's memory-mapped architecture for efficient memory usage
 - **Transactional**: Fully ACID-compliant with robust transaction support
@@ -35,7 +35,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation("io.github.crowded-libs:kotlin-lmdb:0.2.0")
+                implementation("io.github.crowded-libs:kotlin-lmdb:0.3.0")
             }
         }
     }
@@ -48,7 +48,7 @@ kotlin {
 <dependency>
   <groupId>io.github.crowded-libs</groupId>
   <artifactId>kotlin-lmdb</artifactId>
-  <version>0.2.0</version>
+  <version>0.3.0</version>
 </dependency>
 ```
 
@@ -231,6 +231,34 @@ The library provides these pre-built comparers through the `ValComparer` enum:
   - **iOS**: iOS (Arm64, x64), iOS Simulator (Arm64)
   - **watchOS**: watchOS (Arm32, Arm64), watchOS Simulator (Arm64)
   - **tvOS**: tvOS (Arm64), tvOS Simulator (Arm64)
+- **WebAssembly**: wasmJs (browser and Node.js)
+
+## Platform-Specific Considerations
+
+### WebAssembly (wasmJs)
+
+The wasmJs target provides LMDB functionality in web browsers and Node.js environments, but has some differences from other platforms:
+
+**Implementation Details:**
+- Uses a compiled WASM version of LMDB with Emscripten
+- File system operations are handled through browser/Node.js filesystem abstraction layers
+- Database files are stored in virtual filesystems (IDBFS for browsers, NODEFS for Node.js)
+
+**Behavioral Differences:**
+- The `MDB_WRITEMAP` flag is always enabled when opening environments, regardless of whether it's explicitly specified
+- This is due to Emscripten's memory mapping implementation which doesn't support `MAP_SHARED` without write access
+- Write operations may have different performance characteristics compared to native platforms
+
+**Limitations:**
+- File system persistence varies by environment (IndexedDB in browsers, real filesystem in Node.js)
+- Memory constraints are typically lower than native platforms
+- Some advanced LMDB features may have different behavior due to WASM limitations
+- Performance characteristics differ from native implementations
+
+**Usage Notes:**
+- In browsers, databases persist in IndexedDB between sessions
+- In Node.js, databases behave similarly to other platforms
+- Always test wasmJs-specific functionality thoroughly in your target environment
 
 ## References
 
