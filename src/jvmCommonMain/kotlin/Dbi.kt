@@ -1,44 +1,47 @@
 package lmdb
 
-import lmdb.Library.Companion.LMDB
-import lmdb.Library.Companion.RUNTIME
-import jnr.ffi.Memory.allocateDirect
-import jnr.ffi.NativeType
-import jnr.ffi.Pointer
 import java.util.concurrent.atomic.AtomicBoolean
 
 actual class Dbi actual constructor(name: String?, tx: Txn, vararg options: DbiOption) : AutoCloseable {
-    private val dbiPtr = allocateDirect(RUNTIME, NativeType.ADDRESS)
-    internal val ptr: Pointer
+    internal val dbiHandle: Int
     private val closed = AtomicBoolean(false)
     private val env = tx.env
 
     init {
-        check(LMDB.mdb_dbi_open(tx.ptr, name?.toByteArray(), options.asIterable().toFlags().toInt(), dbiPtr))
-        ptr = dbiPtr.getPointer(0)
+        dbiHandle = LmdbJna.mdb_dbi_open(tx.ptr, name, options.asIterable().toFlags().toInt())
+        if (dbiHandle < 0) {
+            throw LmdbException("Failed to open database: ${LmdbJna.mdb_strerror(dbiHandle)}")
+        }
     }
 
     actual fun stat(tx: Txn) : Stat {
-        val mdbStat: Library.MDB_stat = Library.MDB_stat(RUNTIME)
-        check(LMDB.mdb_stat(tx.ptr, ptr, mdbStat))
-        return Stat(mdbStat.f2_ms_branch_pages.get().toULong(), mdbStat.f1_ms_depth.get().toUInt(),
-            mdbStat.f5_ms_entries.get().toULong(), mdbStat.f3_ms_leaf_pages.get().toULong(),
-            mdbStat.f4_ms_overflow_pages.get().toULong(), mdbStat.f0_ms_psize.get().toUInt())
+        val mdbStat = LmdbJna.Stat()
+        check(LmdbJna.mdb_stat(tx.ptr, dbiHandle, mdbStat))
+        return Stat(
+            branchPages = mdbStat.branchPages.toULong(),
+            depth = mdbStat.depth.toUInt(),
+            entries = mdbStat.entries.toULong(),
+            leafPages = mdbStat.leafPages.toULong(),
+            overflowPages = mdbStat.overflowPages.toULong(),
+            pSize = mdbStat.pageSize.toUInt()
+        )
     }
     
     actual fun compare(tx: Txn, a: Val, b: Val): Int {
-        return LMDB.mdb_cmp(tx.ptr, ptr, a.mdbVal.ptr, b.mdbVal.ptr)
+        return LmdbJna.mdb_cmp(tx.ptr, dbiHandle, a.mdbVal.buffer, b.mdbVal.buffer)
     }
     
     actual fun dupCompare(tx: Txn, a: Val, b: Val): Int {
-        return LMDB.mdb_dcmp(tx.ptr, ptr, a.mdbVal.ptr, b.mdbVal.ptr)
+        return LmdbJna.mdb_dcmp(tx.ptr, dbiHandle, a.mdbVal.buffer, b.mdbVal.buffer)
     }
     
     actual fun flags(tx: Txn): Set<DbiOption> {
-        val flagsRef = jnr.ffi.byref.IntByReference()
-        check(LMDB.mdb_dbi_flags(tx.ptr, ptr, flagsRef))
-        val flagsInt = flagsRef.value.toUInt()
-        return DbiOption.entries.filter { (flagsInt and it.option) != 0u }.toSet()
+        val flagsValue = LmdbJna.mdb_dbi_flags(tx.ptr, dbiHandle)
+        if (flagsValue < 0) {
+            throw LmdbException("Failed to get database flags: ${LmdbJna.mdb_strerror(flagsValue)}")
+        }
+        val flagsUInt = flagsValue.toUInt()
+        return DbiOption.entries.filter { (flagsUInt and it.option) != 0u }.toSet()
     }
     
     /**
@@ -53,7 +56,7 @@ actual class Dbi actual constructor(name: String?, tx: Txn, vararg options: DbiO
      */
     actual override fun close() {
         if (closed.compareAndSet(false, true)) {
-            LMDB.mdb_dbi_close(env.ptr, ptr)
+            LmdbJna.mdb_dbi_close(env.ptr, dbiHandle)
         }
     }
 }

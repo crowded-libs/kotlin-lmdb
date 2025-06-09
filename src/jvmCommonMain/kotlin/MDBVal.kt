@@ -1,38 +1,55 @@
 package lmdb
 
-import lmdb.Library.Companion.MEMORY
-import jnr.ffi.Pointer
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
-class MDBVal private constructor(val ptr: Pointer) {
+class MDBVal internal constructor(val buffer: ByteBuffer) {
     companion object {
         internal fun input(data: ByteArray) : MDBVal {
-            val ptr = MEMORY.allocateTemporary(16, false)
-            val dataPtr = MEMORY.allocateDirect(data.size)
-            dataPtr.put(0, data, 0, data.size)
-            ptr.putLong(0, data.size.toLong())
-            ptr.putAddress(Long.SIZE_BYTES.toLong(), dataPtr.address())
-            return MDBVal(ptr)
+            // Create a direct ByteBuffer with the data
+            val dataBuffer = ByteBuffer.allocateDirect(data.size)
+            dataBuffer.put(data)
+            dataBuffer.flip()
+            
+            // Return MDBVal with the data buffer
+            return MDBVal(dataBuffer)
         }
 
         internal fun output() : MDBVal {
-            val ptr = MEMORY.allocateTemporary(16, false)
-            return MDBVal(ptr)
+            // Create an empty direct ByteBuffer that will be filled by LMDB
+            // We'll use a reasonable default size that can be resized by JNI if needed
+            val buffer = ByteBuffer.allocateDirect(4096)
+            buffer.order(ByteOrder.nativeOrder())
+            return MDBVal(buffer)
         }
         
         /**
-         * Create an MDBVal from a JNR pointer
+         * Create an MDBVal from a JNA MDB_val structure
          */
-        internal fun fromJNRPointer(pointer: Pointer): MDBVal {
-            return MDBVal(pointer)
+        internal fun fromMdbVal(mdbVal: MDB_val): MDBVal {
+            if (mdbVal.mv_data == null || mdbVal.mv_size == 0L) {
+                return MDBVal(ByteBuffer.allocateDirect(0))
+            }
+            
+            // Create a ByteBuffer from the native pointer
+            val buffer = mdbVal.mv_data!!.getByteBuffer(0, mdbVal.mv_size)
+            return MDBVal(buffer)
         }
     }
+    
+    /**
+     * Get the size of the data in this MDBVal
+     */
+    val size: Int
+        get() = buffer.remaining()
 }
 
 fun MDBVal.toByteArray() : ByteArray {
-    val addr = ptr.getAddress(8)
-    val size = ptr.getLong(0)
-    val pointer = MEMORY.newPointer(addr, size)
-    val bytes = ByteArray(size.toInt())
-    pointer.get(0, bytes, 0, size.toInt())
+    val bytes = ByteArray(buffer.remaining())
+    // Save current position
+    val pos = buffer.position()
+    buffer.get(bytes)
+    // Restore position
+    buffer.position(pos)
     return bytes
 }

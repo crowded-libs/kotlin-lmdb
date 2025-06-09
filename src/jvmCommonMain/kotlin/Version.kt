@@ -1,23 +1,21 @@
 package lmdb
 
-import jnr.ffi.byref.IntByReference
-import lmdb.Library.Companion.LMDB
-
 /**
  * Returns the version information of the LMDB library for JVM platform
  *
  * @return A [LmdbVersion] object containing the major, minor, and patch version numbers
  */
 actual fun lmdbVersion(): LmdbVersion {
-    val majorRef = IntByReference()
-    val minorRef = IntByReference()
-    val patchRef = IntByReference()
+    val versionString = LmdbJna.mdb_version()
+    val parts = versionString.split(".")
     
-    LMDB.mdb_version(majorRef, minorRef, patchRef)
+    if (parts.size != 3) {
+        throw LmdbException("Invalid version string format: $versionString")
+    }
     
     return LmdbVersion(
-        major = majorRef.value,
-        minor = minorRef.value,
-        patch = patchRef.value
+        major = parts[0].toIntOrNull() ?: 0,
+        minor = parts[1].toIntOrNull() ?: 0,
+        patch = parts[2].toIntOrNull() ?: 0
     )
 }

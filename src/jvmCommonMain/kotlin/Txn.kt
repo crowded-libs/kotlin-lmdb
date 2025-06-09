@@ -1,23 +1,18 @@
 package lmdb
 
-import lmdb.Library.Companion.LMDB
-import lmdb.Library.Companion.RUNTIME
+import com.sun.jna.Pointer
 import lmdb.TxnState.*
-import jnr.ffi.Memory.allocateDirect
-import jnr.ffi.NativeType
-import jnr.ffi.Pointer
 
 actual class Txn internal actual constructor(env: Env, parent: Txn?, vararg options: TxnOption) : AutoCloseable {
     val env: Env
-    private val txnPtr = allocateDirect(RUNTIME, NativeType.ADDRESS)
     internal val ptr: Pointer
-    private val parentTx: Pointer?
+    private val parentPtr: Pointer?
     internal actual var state: TxnState
     
     actual val id: ULong
         get() {
             checkReady()
-            return LMDB.mdb_txn_id(ptr).toULong()
+            return LmdbJna.mdb_txn_id(ptr).toULong()
         }
 
     internal actual constructor(env: Env, vararg options: TxnOption) : this(env, null, *options)
@@ -25,9 +20,8 @@ actual class Txn internal actual constructor(env: Env, parent: Txn?, vararg opti
     init {
         if(!env.isOpened) throw LmdbException("Env is not open")
         this.env = env
-        parentTx = parent?.ptr
-        check(LMDB.mdb_txn_begin(env.ptr, parentTx, options.asIterable().toFlags().toInt(), txnPtr))
-        ptr = txnPtr.getPointer(0)
+        parentPtr = parent?.ptr
+        ptr = LmdbJna.mdb_txn_begin(env.ptr, parentPtr, options.asIterable().toFlags().toInt())
         state = Ready
     }
 
@@ -37,7 +31,7 @@ actual class Txn internal actual constructor(env: Env, parent: Txn?, vararg opti
 
     actual fun abort() {
         checkReady()
-        LMDB.mdb_txn_abort(ptr)
+        LmdbJna.mdb_txn_abort(ptr)
         state = Done
     }
 
@@ -46,7 +40,7 @@ actual class Txn internal actual constructor(env: Env, parent: Txn?, vararg opti
             Ready, Done -> throw LmdbException("Transaction is in an invalid state for reset.")
             Reset, Released -> state = Reset
         }
-        LMDB.mdb_txn_reset(ptr)
+        LmdbJna.mdb_txn_reset(ptr)
     }
 
     actual fun renew() {
@@ -54,50 +48,62 @@ actual class Txn internal actual constructor(env: Env, parent: Txn?, vararg opti
            throw LmdbException("Transaction is in an invalid state for renew, must be reset.")
        }
         state = Done
-        check(LMDB.mdb_txn_renew(ptr))
+        check(LmdbJna.mdb_txn_renew(ptr))
         state = Ready
     }
 
     actual fun commit() {
         checkReady()
         state = Done
-        check(LMDB.mdb_txn_commit(ptr))
+        check(LmdbJna.mdb_txn_commit(ptr))
     }
 
     actual fun dbiOpen(name: String?, vararg options: DbiOption) : Dbi {
+        checkReady()
         return Dbi(name, this, *options)
     }
     
     actual fun dbiOpen(name: String?, config: DbiConfig, vararg options: DbiOption) : Dbi {
+        checkReady()
         val dbi = Dbi(name, this, *options)
         
         // Set key comparer if provided
         config.keyComparer?.let { comparer ->
             val keyComparatorCallback = ValComparerImpl.getComparerCallback(comparer)
-            check(LMDB.mdb_set_compare(ptr, dbi.ptr, keyComparatorCallback))
+            check(LmdbJna.mdb_set_compare(ptr, dbi.dbiHandle, keyComparatorCallback))
         }
         
         // Set duplicate data comparer if provided
         config.dupComparer?.let { comparer ->
             val dupComparatorCallback = ValComparerImpl.getComparerCallback(comparer)
-            check(LMDB.mdb_set_dupsort(ptr, dbi.ptr, dupComparatorCallback))
+            check(LmdbJna.mdb_set_dupsort(ptr, dbi.dbiHandle, dupComparatorCallback))
         }
         
         return dbi
     }
     
     actual fun get(dbi: Dbi, key: Val) : ValResult {
-        val data = MDBVal.output()
-        val resultCode = LMDB.mdb_get(ptr, dbi.ptr, key.mdbVal.ptr, data.ptr)
-        return buildReadResult(resultCode, key, Val.fromMDBVal(data))
+        checkReady()
+        // Use the direct get method that returns the MDB_val
+        val (resultCode, dataVal) = LmdbJna.mdb_get_direct(ptr, dbi.dbiHandle, key.mdbVal.buffer)
+        
+        return if (resultCode == 0 && dataVal != null) {
+            // Create Val from the returned MDB_val
+            val data = Val.fromMDBVal(MDBVal.fromMdbVal(dataVal))
+            buildReadResult(resultCode, key, data)
+        } else {
+            buildReadResult(resultCode, key, Val.fromMDBVal(MDBVal.output()))
+        }
     }
 
     actual fun put(dbi: Dbi, key: Val, data: Val, vararg options: PutOption) {
-        check(LMDB.mdb_put(ptr, dbi.ptr, key.mdbVal.ptr, data.mdbVal.ptr,
+        checkReady()
+        check(LmdbJna.mdb_put(ptr, dbi.dbiHandle, key.mdbVal.buffer, data.mdbVal.buffer,
             options.asIterable().toFlags().toInt()))
     }
 
     actual fun openCursor(dbi: Dbi): Cursor {
+        checkReady()
         return Cursor(this, dbi)
     }
 
@@ -106,24 +112,34 @@ actual class Txn internal actual constructor(env: Env, parent: Txn?, vararg opti
             return
         }
         if (state == Ready) {
-            LMDB.mdb_txn_abort(ptr)
+            LmdbJna.mdb_txn_abort(ptr)
         }
         state = Released
     }
 
     actual fun drop(dbi: Dbi) {
-        check(LMDB.mdb_drop(ptr, dbi.ptr, 1))
+        checkReady()
+        check(LmdbJna.mdb_drop(ptr, dbi.dbiHandle, 1))
     }
 
     actual fun empty(dbi: Dbi) {
-        check(LMDB.mdb_drop(ptr, dbi.ptr, 0))
+        checkReady()
+        check(LmdbJna.mdb_drop(ptr, dbi.dbiHandle, 0))
     }
 
     actual fun delete(dbi: Dbi, key: Val) {
-        check(LMDB.mdb_del(ptr, dbi.ptr, key.mdbVal.ptr, null))
+        checkReady()
+        check(LmdbJna.mdb_del(ptr, dbi.dbiHandle, key.mdbVal.buffer, null))
     }
 
     actual fun delete(dbi: Dbi, key: Val, data: Val) {
-        check(LMDB.mdb_del(ptr, dbi.ptr, key.mdbVal.ptr, data.mdbVal.ptr))
+        checkReady()
+        check(LmdbJna.mdb_del(ptr, dbi.dbiHandle, key.mdbVal.buffer, data.mdbVal.buffer))
+    }
+    
+    private fun checkReady() {
+        if (state != Ready) {
+            throw LmdbException("Transaction is not in Ready state (current state: $state)")
+        }
     }
 }

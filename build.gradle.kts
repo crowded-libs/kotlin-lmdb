@@ -12,7 +12,7 @@ plugins {
 }
 
 group = "io.github.crowded-libs"
-version = "0.3.0"
+version = "0.3.1"
 description = "Kotlin Multiplatform library for LMDB key-value store"
 
 repositories {
@@ -90,8 +90,8 @@ kotlin {
         val jvmCommonMain by creating {
             dependsOn(commonMain)
             dependencies {
-                implementation(libs.jnr.constants)
-                implementation(libs.jnr.ffi)
+                implementation(libs.jna)
+                implementation(libs.jna.platform)
             }
         }
         val jvmMain by getting {
@@ -106,6 +106,7 @@ kotlin {
 
         val wasmJsMain by getting {
             dependsOn(commonMain)
+            resources.srcDirs("src/wasmJsMain/resources")
         }
         val wasmJsTest by getting {
             dependsOn(commonTest)
@@ -148,8 +149,13 @@ kotlin {
             dependsOn(jvmCommonTest)
         }
 
-        val androidMain by getting { dependsOn(jvmCommonMain) }
-        val androidUnitTest by getting { dependsOn(jvmCommonTest) }
+        val androidMain by getting {
+            dependsOn(jvmCommonMain)
+        }
+        val androidUnitTest by getting { 
+            dependsOn(jvmCommonTest)
+            resources.srcDirs(jvmCommonMain.resources.srcDirs)
+        }
 
         val macosMain by creating { dependsOn(nativeMain) }
         val macosX64Main by getting { dependsOn(macosMain) }
@@ -196,6 +202,13 @@ android {
     namespace = "lmdb"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
+    sourceSets {
+        getByName("main") {
+            jniLibs.srcDirs("src/jvmCommonMain/resources/jniLibs")
+            resources.srcDirs("src/jvmCommonMain/resources")
+        }
+    }
+
     defaultConfig {
         minSdk = 24
     }
@@ -203,79 +216,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
-    }
-
-    sourceSets {
-        getByName("main") {
-            // This ensures jniLibs are included in the AAR
-            jniLibs.srcDirs("src/androidMain/jniLibs")
-        }
-    }
-}
-
-// Task to copy Android native libraries to the correct JNI location
-val copyAndroidNativeLibs by tasks.registering(Copy::class) {
-    description = "Copy Android native libraries to JNI libs directory"
-    
-    // Copy ARM32 library
-    from("src/jvmCommonMain/resources/native-libs/androidNativeArm32/liblmdb.so") {
-        into("armeabi-v7a")
-    }
-    
-    // Copy ARM64 library
-    from("src/jvmCommonMain/resources/native-libs/androidNativeArm64/liblmdb.so") {
-        into("arm64-v8a")
-    }
-    
-    into("src/androidMain/jniLibs")
-}
-
-// Task to copy host platform libraries for unit testing
-val copyHostNativeLibsForAndroidTests by tasks.registering(Copy::class) {
-    description = "Copy host platform native libraries for Android unit tests"
-    
-    // Copy macOS libraries
-    from("src/jvmCommonMain/resources/native-libs/macosX64/liblmdb.dylib") {
-        into("macosX64")
-    }
-    from("src/jvmCommonMain/resources/native-libs/macosArm64/liblmdb.dylib") {
-        into("macosArm64")
-    }
-    
-    // Copy Linux libraries
-    from("src/jvmCommonMain/resources/native-libs/linuxX64/liblmdb.so") {
-        into("linuxX64")
-    }
-    from("src/jvmCommonMain/resources/native-libs/linuxArm64/liblmdb.so") {
-        into("linuxArm64")
-    }
-    
-    // Copy Windows library
-    from("src/jvmCommonMain/resources/native-libs/mingwX64/lmdb.dll") {
-        into("mingwX64")
-    }
-    
-    into("src/androidMain/resources/native-libs")
-}
-
-// Ensure native libraries are copied before building
-afterEvaluate {
-    tasks.findByName("assembleDebug")?.dependsOn(copyAndroidNativeLibs, copyHostNativeLibsForAndroidTests)
-    tasks.findByName("assembleRelease")?.dependsOn(copyAndroidNativeLibs, copyHostNativeLibsForAndroidTests)
-    tasks.findByName("bundleDebugAar")?.dependsOn(copyAndroidNativeLibs, copyHostNativeLibsForAndroidTests)
-    tasks.findByName("bundleReleaseAar")?.dependsOn(copyAndroidNativeLibs, copyHostNativeLibsForAndroidTests)
-    tasks.findByName("mergeDebugJniLibFolders")?.dependsOn(copyAndroidNativeLibs)
-    tasks.findByName("mergeReleaseJniLibFolders")?.dependsOn(copyAndroidNativeLibs)
-    tasks.findByName("processDebugJavaRes")?.dependsOn(copyHostNativeLibsForAndroidTests)
-    tasks.findByName("processReleaseJavaRes")?.dependsOn(copyHostNativeLibsForAndroidTests)
-}
-
-// Clean up copied files on clean
-tasks.named("clean") {
-    doLast {
-        delete("src/androidMain/jniLibs")
-        delete("src/androidMain/resources/native-libs")
-        delete("src/wasmJsMain/resources/kotlin")
     }
 }
 
@@ -293,7 +233,7 @@ val dokkaHtmlJar by tasks.registering(Jar::class) {
 mavenPublishing {
     publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
 
-    signAllPublications()
+    //signAllPublications()
 
     coordinates(group.toString(), "kotlin-lmdb", version.toString())
 
@@ -582,3 +522,4 @@ tasks.matching { it.name.contains("webpack", ignoreCase = true) && it.name.conta
 tasks.matching { it.name == "wasmJsBrowserDevelopmentWebpack" || it.name == "wasmJsBrowserProductionWebpack" }.configureEach {
     dependsOn(copyWasmResourcesForTests)
 }
+

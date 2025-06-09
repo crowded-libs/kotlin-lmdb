@@ -4,15 +4,14 @@ android-compileSdk = "34"
 kotlin = "2.1.21"
 dokka = "2.0.0"
 kotlinx-io = "0.7.0"
-jnr-constants = "0.10.4"
-jnr-ffi = "2.2.17"
 maven-publish = "0.30.0"
+jna = "5.17.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
 kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinx-io" }
-jnr-constants = { module = "com.github.jnr:jnr-constants", version.ref = "jnr-constants" }
-jnr-ffi = { module = "com.github.jnr:jnr-ffi", version.ref = "jnr-ffi" }
+jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
+jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
 
 [plugins]
 androidLibrary = { id = "com.android.library", version.ref = "agp" }

@@ -1,7 +1,5 @@
 package lmdb
 
-import jnr.ffi.Pointer
-
 // The actual implementation of ValComparerRegistry is in ValComparerRegistryImpl.kt
 
 /**
@@ -29,8 +27,9 @@ internal class ValComparerImpl {
 
         /**
          * Get the JVM-specific comparator callback for given ValComparer
+         * Returns a JNA callback that can be passed to native code
          */
-        fun getComparerCallback(comparer: ValComparer): Library.ComparatorCallback {
+        fun getComparerCallback(comparer: ValComparer): Any {
             val compareFn = when {
                 standardComparers.containsKey(comparer) -> standardComparers[comparer]
                 isCustomComparer(comparer) -> {
@@ -40,11 +39,12 @@ internal class ValComparerImpl {
                 else -> throw IllegalArgumentException("Unsupported comparer: $comparer")
             }
             
-            return object : Library.ComparatorCallback {
-                override fun compare(keyA: Pointer?, keyB: Pointer?): Int {
-                    val a = Val.fromMDBVal(MDBVal.fromJNRPointer(keyA!!))
-                    val b = Val.fromMDBVal(MDBVal.fromJNRPointer(keyB!!))
-                    return compareFn!!(a, b)
+            // Return a JNA callback implementation
+            return object : LmdbLibrary.MDB_cmp_func {
+                override fun compare(a: MDB_val, b: MDB_val): Int {
+                    val aVal = Val(MDBVal.fromMdbVal(a))
+                    val bVal = Val(MDBVal.fromMdbVal(b))
+                    return compareFn!!(aVal, bVal)
                 }
             }
         }
