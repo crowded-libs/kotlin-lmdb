@@ -204,6 +204,79 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
+    sourceSets {
+        getByName("main") {
+            // This ensures jniLibs are included in the AAR
+            jniLibs.srcDirs("src/androidMain/jniLibs")
+        }
+    }
+}
+
+// Task to copy Android native libraries to the correct JNI location
+val copyAndroidNativeLibs by tasks.registering(Copy::class) {
+    description = "Copy Android native libraries to JNI libs directory"
+    
+    // Copy ARM32 library
+    from("src/jvmCommonMain/resources/native-libs/androidNativeArm32/liblmdb.so") {
+        into("armeabi-v7a")
+    }
+    
+    // Copy ARM64 library
+    from("src/jvmCommonMain/resources/native-libs/androidNativeArm64/liblmdb.so") {
+        into("arm64-v8a")
+    }
+    
+    into("src/androidMain/jniLibs")
+}
+
+// Task to copy host platform libraries for unit testing
+val copyHostNativeLibsForAndroidTests by tasks.registering(Copy::class) {
+    description = "Copy host platform native libraries for Android unit tests"
+    
+    // Copy macOS libraries
+    from("src/jvmCommonMain/resources/native-libs/macosX64/liblmdb.dylib") {
+        into("macosX64")
+    }
+    from("src/jvmCommonMain/resources/native-libs/macosArm64/liblmdb.dylib") {
+        into("macosArm64")
+    }
+    
+    // Copy Linux libraries
+    from("src/jvmCommonMain/resources/native-libs/linuxX64/liblmdb.so") {
+        into("linuxX64")
+    }
+    from("src/jvmCommonMain/resources/native-libs/linuxArm64/liblmdb.so") {
+        into("linuxArm64")
+    }
+    
+    // Copy Windows library
+    from("src/jvmCommonMain/resources/native-libs/mingwX64/lmdb.dll") {
+        into("mingwX64")
+    }
+    
+    into("src/androidMain/resources/native-libs")
+}
+
+// Ensure native libraries are copied before building
+afterEvaluate {
+    tasks.findByName("assembleDebug")?.dependsOn(copyAndroidNativeLibs, copyHostNativeLibsForAndroidTests)
+    tasks.findByName("assembleRelease")?.dependsOn(copyAndroidNativeLibs, copyHostNativeLibsForAndroidTests)
+    tasks.findByName("bundleDebugAar")?.dependsOn(copyAndroidNativeLibs, copyHostNativeLibsForAndroidTests)
+    tasks.findByName("bundleReleaseAar")?.dependsOn(copyAndroidNativeLibs, copyHostNativeLibsForAndroidTests)
+    tasks.findByName("mergeDebugJniLibFolders")?.dependsOn(copyAndroidNativeLibs)
+    tasks.findByName("mergeReleaseJniLibFolders")?.dependsOn(copyAndroidNativeLibs)
+    tasks.findByName("processDebugJavaRes")?.dependsOn(copyHostNativeLibsForAndroidTests)
+    tasks.findByName("processReleaseJavaRes")?.dependsOn(copyHostNativeLibsForAndroidTests)
+}
+
+// Clean up copied files on clean
+tasks.named("clean") {
+    doLast {
+        delete("src/androidMain/jniLibs")
+        delete("src/androidMain/resources/native-libs")
+        delete("src/wasmJsMain/resources/kotlin")
+    }
 }
 
 dokka {
@@ -409,6 +482,7 @@ val linkLmdbWasm by tasks.registering(LinkLmdbWasmTask::class) {
 val prepareLmdbWasmResources by tasks.registering(Copy::class) {
     dependsOn(linkLmdbWasm)
     
+    // First copy generated files from the build
     from(linkLmdbWasm.map { task ->
         task.outputFile.get().asFile.parentFile
     }) {
@@ -422,7 +496,11 @@ val prepareLmdbWasmResources by tasks.registering(Copy::class) {
         }
     }
     
-    into(layout.projectDirectory.dir("src/wasmJsMain/resources"))
+    // Also copy the wrapper file
+    from(layout.projectDirectory.file("src/wasmJsMain/resources/lmdb-wrapper.mjs"))
+    
+    // Copy to kotlin subdirectory to match import paths
+    into(layout.projectDirectory.dir("src/wasmJsMain/resources/kotlin"))
 }
 
 // Configure wasmJs compilation to depend on LMDB resources
@@ -439,4 +517,68 @@ kotlin {
 // Fix task dependency issue
 tasks.named("wasmJsProcessResources") {
     dependsOn(prepareLmdbWasmResources)
+}
+
+// Task to copy WASM resources to test execution directories
+val copyWasmResourcesForTests by tasks.registering {
+    description = "Copy WASM resources to test execution directories"
+    
+    doLast {
+        val buildDir = layout.buildDirectory.get().asFile
+        val resourcesKotlinDir = File("src/wasmJsMain/resources/kotlin")
+        
+        // Copy from kotlin subdirectory to test directories
+        if (resourcesKotlinDir.exists()) {
+            // Copy to Node.js test directory
+            val nodeTestDir = File(buildDir, "js/packages/${project.name}-wasm-js-test/kotlin")
+            if (nodeTestDir.exists() || nodeTestDir.mkdirs()) {
+                copy {
+                    from(resourcesKotlinDir) {
+                        include("*.mjs", "*.wasm")
+                    }
+                    into(nodeTestDir)
+                }
+                logger.lifecycle("Copied WASM resources to Node.js test directory: $nodeTestDir")
+            }
+            
+            // Copy to browser test directory
+            val browserTestDir = File(buildDir, "js/packages/${project.name}-wasm-js-test/kotlin")
+            if (browserTestDir.exists() || browserTestDir.mkdirs()) {
+                copy {
+                    from(resourcesKotlinDir) {
+                        include("*.mjs", "*.wasm")
+                    }
+                    into(browserTestDir)
+                }
+                logger.lifecycle("Copied WASM resources to browser test directory: $browserTestDir")
+            }
+            
+            // Also copy to the root of the test package for webpack resolution
+            val browserPackageRoot = File(buildDir, "js/packages/${project.name}-wasm-js-test")
+            if (browserPackageRoot.exists()) {
+                copy {
+                    from(resourcesKotlinDir) {
+                        include("*.mjs", "*.wasm")
+                    }
+                    into(browserPackageRoot)
+                }
+                logger.lifecycle("Copied WASM resources to browser package root: $browserPackageRoot")
+            }
+        }
+    }
+}
+
+// Configure test tasks to depend on resource copying
+tasks.matching { it.name == "wasmJsNodeTest" || it.name == "wasmJsBrowserTest" }.configureEach {
+    dependsOn(copyWasmResourcesForTests)
+}
+
+// Ensure WASM resources are available before webpack bundling
+tasks.matching { it.name.contains("webpack", ignoreCase = true) && it.name.contains("wasmJs") }.configureEach {
+    dependsOn(copyWasmResourcesForTests)
+}
+
+// Also ensure resources are copied for development bundle
+tasks.matching { it.name == "wasmJsBrowserDevelopmentWebpack" || it.name == "wasmJsBrowserProductionWebpack" }.configureEach {
+    dependsOn(copyWasmResourcesForTests)
 }
