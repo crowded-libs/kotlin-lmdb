@@ -233,7 +233,7 @@ val dokkaHtmlJar by tasks.registering(Jar::class) {
 mavenPublishing {
     publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
 
-    //signAllPublications()
+    signAllPublications()
 
     coordinates(group.toString(), "kotlin-lmdb", version.toString())
 
