@@ -35,7 +35,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation("io.github.crowded-libs:kotlin-lmdb:0.3.0")
+                implementation("io.github.crowded-libs:kotlin-lmdb:0.3.1")
             }
         }
     }
@@ -48,7 +48,7 @@ kotlin {
 <dependency>
   <groupId>io.github.crowded-libs</groupId>
   <artifactId>kotlin-lmdb</artifactId>
-  <version>0.3.0</version>
+  <version>0.3.1</version>
 </dependency>
 ```
 
@@ -235,6 +235,16 @@ The library provides these pre-built comparers through the `ValComparer` enum:
 
 ## Platform-Specific Considerations
 
+### Android
+
+The library includes pre-built native libraries for all common Android architectures:
+- arm64-v8a (64-bit ARM)
+- armeabi-v7a (32-bit ARM)
+- x86_64 (64-bit x86)
+- x86 (32-bit x86)
+
+No additional configuration is required - the native libraries are automatically included and loaded when you add the dependency.
+
 ### WebAssembly (wasmJs)
 
 The wasmJs target provides LMDB functionality in web browsers and Node.js environments, but has some differences from other platforms:
@@ -256,9 +266,11 @@ The wasmJs target provides LMDB functionality in web browsers and Node.js enviro
 - Performance characteristics differ from native implementations
 
 **Usage Notes:**
+- Must call WasmUtils.mountBestFilesystem(...) before using.
 - In browsers, databases persist in IndexedDB between sessions
 - In Node.js, databases behave similarly to other platforms
 - Always test wasmJs-specific functionality thoroughly in your target environment
+- You will need to setup a copy task for the js assets with your own project to ensure the modules load successfully. I haven't figured out how to make the packaging work seamlessly for consumption of the maven package yet. (pull request?)
 
 ## References
 
