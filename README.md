@@ -35,7 +35,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation("io.github.crowded-libs:kotlin-lmdb:0.3.1")
+                implementation("io.github.crowded-libs:kotlin-lmdb:0.3.3")
             }
         }
     }
@@ -48,7 +48,7 @@ kotlin {
 <dependency>
   <groupId>io.github.crowded-libs</groupId>
   <artifactId>kotlin-lmdb</artifactId>
-  <version>0.3.1</version>
+  <version>0.3.3</version>
 </dependency>
 ```
 
