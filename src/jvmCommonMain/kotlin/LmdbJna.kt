@@ -182,9 +182,9 @@ internal object LmdbJna {
     fun mdb_get_direct(txn: Pointer, dbi: Int, key: ByteBuffer): Pair<Int, MDB_val?> {
         val keyVal = byteBufferToMdbVal(key)
         val dataVal = MDB_val()
-        
+
         val rc = lib.mdb_get(txn, dbi, keyVal, dataVal)
-        
+
         return if (rc == 0) {
             rc to dataVal
         } else {
@@ -222,9 +222,9 @@ internal object LmdbJna {
     fun mdb_cursor_get(cursor: Pointer, key: ByteBuffer, data: ByteBuffer, op: Int): Int {
         val keyVal = byteBufferToMdbVal(key)
         val dataVal = byteBufferToMdbVal(data)
-        
+
         val rc = lib.mdb_cursor_get(cursor, keyVal, dataVal, op)
-        
+
         if (rc == 0) {
             // Update ByteBuffer positions based on returned data
             if (keyVal.mv_data != null) {
@@ -233,7 +233,7 @@ internal object LmdbJna {
                 key.put(keyVal.mv_data!!.getByteArray(0, keyVal.mv_size.toInt()))
                 key.position(0)
             }
-            
+
             if (dataVal.mv_data != null) {
                 data.position(0)
                 data.limit(dataVal.mv_size.toInt())
@@ -241,7 +241,7 @@ internal object LmdbJna {
                 data.position(0)
             }
         }
-        
+
         return rc
     }
 
@@ -301,13 +301,13 @@ internal object LmdbJna {
     // Helper function to convert ByteBuffer to MDB_val
     private fun byteBufferToMdbVal(buffer: ByteBuffer): MDB_val {
         val val_ = MDB_val()
-        
+
         if (buffer.isDirect) {
             // Direct ByteBuffer - get native pointer
             val address = Native.getDirectBufferPointer(buffer)
             val offset = buffer.position()
             val length = buffer.remaining()
-            
+
             if (offset > 0) {
                 // If there's an offset, we need to share the pointer at the correct position
                 val pointer = address.share(offset.toLong())
@@ -323,14 +323,14 @@ internal object LmdbJna {
             val savedPosition = buffer.position()
             buffer.get(array)
             buffer.position(savedPosition) // Restore original position
-            
+
             val memory = Memory(array.size.toLong())
             memory.write(0, array, 0, array.size)
-            
+
             val_.mv_data = memory
             val_.mv_size = array.size.toLong()
         }
-        
+
         return val_
     }
 
@@ -341,6 +341,12 @@ internal object LmdbJna {
         private const val DEBUG = false
         private const val LMDB_NATIVE_LIB_PROP = "lmdb.native.lib"
         private const val LMDB_LIB_NAME = "lmdb"
+
+        // Cache system properties to avoid repeated lookups
+        private val osName = System.getProperty("os.name")?.lowercase() ?: ""
+        private val osArch = System.getProperty("os.arch")?.lowercase() ?: ""
+        private val javaVendor = System.getProperty("java.vendor") ?: ""
+        private val javaVmVendor = System.getProperty("java.vm.vendor") ?: ""
 
         fun loadLibrary(): LmdbLibrary {
             // Check for explicitly specified library path
@@ -376,7 +382,7 @@ internal object LmdbJna {
                     println("[LMDB-JNA] Failed to load library: ${e.message}")
                     e.printStackTrace()
                 }
-                
+
                 if (extractedLib == null) {
                     // If extraction failed, provide helpful error message
                     val platform = detectPlatform()
@@ -414,7 +420,7 @@ internal object LmdbJna {
 
             val libFileName = getPlatformLibraryName()
             val jnaPlatform = getJnaPlatformName()
-            
+
             // Map our platform names to Android's jniLibs architecture names
             val androidArch = when (platform) {
                 "androidNativeArm64" -> "arm64-v8a"
@@ -423,7 +429,7 @@ internal object LmdbJna {
                 "androidNativeX86" -> "x86"
                 else -> null
             }
-            
+
             // Try multiple resource paths for better compatibility
             val resourcePaths = mutableListOf(
                 "native-libs/$platform/$libFileName",
@@ -434,7 +440,7 @@ internal object LmdbJna {
                 "$jnaPlatform/$libFileName",
                 "native/$jnaPlatform/$libFileName"
             )
-            
+
             // Add Android-specific paths if applicable
             if (androidArch != null) {
                 resourcePaths.add("jniLibs/$androidArch/$libFileName")
@@ -467,7 +473,7 @@ internal object LmdbJna {
                 if (DEBUG) {
                     println("[LMDB-JNA] Resource not found in any of the paths: $resourcePaths")
                     println("[LMDB-JNA] Tried classloaders: $classLoaders")
-                    
+
                     // Try to list available resources for debugging
                     for (loader in classLoaders) {
                         try {
@@ -489,10 +495,10 @@ internal object LmdbJna {
                 // Create temp directory for extracted libraries
                 val tempDir = File(System.getProperty("java.io.tmpdir"), "lmdb-jna-native")
                 tempDir.mkdirs()
-                
+
                 // Use a more stable filename to avoid re-extraction
                 val tempFile = File(tempDir, "$LMDB_LIB_NAME-$platform-${libFileName}")
-                
+
                 // Only extract if file doesn't exist or is older than the resource
                 if (!tempFile.exists() || tempFile.length() == 0L) {
                     inputStream.use { input ->
@@ -504,16 +510,16 @@ internal object LmdbJna {
                 } else {
                     if (DEBUG) println("[LMDB-JNA] Using existing extracted library: ${tempFile.absolutePath}")
                 }
-                
+
                 // Make sure the file is executable on Unix-like systems
                 try {
-                    if (!System.getProperty("os.name").lowercase().contains("win")) {
+                    if (!osName.contains("win")) {
                         tempFile.setExecutable(true)
                     }
                 } catch (_: Exception) {
                     // Ignore permission errors
                 }
-                
+
                 tempFile
             } catch (e: Exception) {
                 if (DEBUG) println("[LMDB-JNA] Failed to extract library: ${e.message}")
@@ -524,32 +530,29 @@ internal object LmdbJna {
         }
 
         private fun detectPlatform(): String {
-            val os = System.getProperty("os.name").lowercase()
-            val arch = System.getProperty("os.arch").lowercase()
-            
             if (DEBUG) {
-                println("[LMDB-JNA] OS: $os, Arch: $arch")
-                println("[LMDB-JNA] java.vendor: ${System.getProperty("java.vendor")}")
-                println("[LMDB-JNA] java.vm.vendor: ${System.getProperty("java.vm.vendor")}")
+                println("[LMDB-JNA] OS: $osName, Arch: $osArch")
+                println("[LMDB-JNA] java.vendor: $javaVendor")
+                println("[LMDB-JNA] java.vm.vendor: $javaVmVendor")
             }
 
             return when {
-                os.contains("win") -> "mingwX64"
-                os.contains("mac") -> when {
-                    arch.contains("aarch64") || arch.contains("arm64") -> "macosArm64"
+                osName.contains("win") -> "mingwX64"
+                osName.contains("mac") -> when {
+                    osArch.contains("aarch64") || osArch.contains("arm64") -> "macosArm64"
                     else -> "macosX64"
                 }
-                os.contains("linux") -> when {
-                    arch.contains("aarch64") || arch.contains("arm64") -> "linuxArm64"
+                osName.contains("linux") -> when {
+                    osArch.contains("aarch64") || osArch.contains("arm64") -> "linuxArm64"
                     else -> "linuxX64"
                 }
-                os.contains("android") || isAndroid() -> when {
-                    arch.contains("arm64") -> "androidNativeArm64"
-                    arch.contains("arm") -> "androidNativeArm32"
-                    arch.contains("x86_64") -> "androidNativeX64"
+                osName.contains("android") || isAndroid() -> when {
+                    osArch.contains("arm64") -> "androidNativeArm64"
+                    osArch.contains("arm") -> "androidNativeArm32"
+                    osArch.contains("x86_64") -> "androidNativeX64"
                     else -> "androidNativeX86"
                 }
-                else -> throw UnsupportedOperationException("Unsupported platform: $os/$arch")
+                else -> throw UnsupportedOperationException("Unsupported platform: $osName/$osArch")
             }
         }
 
@@ -557,37 +560,32 @@ internal object LmdbJna {
          * Get JNA's expected platform name format (e.g., "darwin-aarch64")
          */
         private fun getJnaPlatformName(): String {
-            val os = System.getProperty("os.name").lowercase()
-            val arch = System.getProperty("os.arch").lowercase()
-            
-            val osName = when {
-                os.contains("win") -> "win32"
-                os.contains("mac") -> "darwin"
-                os.contains("linux") -> "linux"
-                else -> os
+            val jnaOsName = when {
+                osName.contains("win") -> "win32"
+                osName.contains("mac") -> "darwin"
+                osName.contains("linux") -> "linux"
+                else -> osName
             }
-            
-            val archName = when {
-                arch.contains("aarch64") || arch.contains("arm64") -> "aarch64"
-                arch.contains("x86_64") || arch.contains("amd64") -> "x86-64"
-                arch.contains("x86") || arch.contains("i386") -> "x86"
-                else -> arch
+
+            val jnaArchName = when {
+                osArch.contains("aarch64") || osArch.contains("arm64") -> "aarch64"
+                osArch.contains("x86_64") || osArch.contains("amd64") -> "x86-64"
+                osArch.contains("x86") || osArch.contains("i386") -> "x86"
+                else -> osArch
             }
-            
-            return "$osName-$archName"
+
+            return "$jnaOsName-$jnaArchName"
         }
 
         private fun isAndroid(): Boolean {
-            return System.getProperty("java.vendor")?.contains("Android") == true ||
-                   System.getProperty("java.vm.vendor")?.contains("Android") == true
+            return javaVendor.contains("Android") || javaVmVendor.contains("Android")
         }
 
         private fun getPlatformLibraryName(): String {
             val baseName = LMDB_LIB_NAME
-            val os = System.getProperty("os.name").lowercase()
             return when {
-                os.contains("win") -> "$baseName.dll"
-                os.contains("mac") -> "lib$baseName.dylib"
+                osName.contains("win") -> "$baseName.dll"
+                osName.contains("mac") -> "lib$baseName.dylib"
                 else -> "lib$baseName.so"
             }
         }
