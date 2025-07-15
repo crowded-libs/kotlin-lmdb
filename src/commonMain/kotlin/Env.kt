@@ -250,6 +250,17 @@ expect class Env() : AutoCloseable {
 }
 
 /**
+ * Executes the given block within a transaction context.
+ * The transaction is automatically committed on successful completion
+ * and rolled back on exception.
+ *
+ * @param block The code block to execute with the transaction as parameter
+ */
+inline fun <R> Env.beginTxn(block: (Txn) -> R): R {
+    return beginTxn().use(block)
+}
+
+/**
  * Opens a transaction, executes the given block, and automatically closes the transaction.
  *
  * This extension function provides a convenient way to use transactions with Kotlin's

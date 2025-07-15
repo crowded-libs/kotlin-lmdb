@@ -12,11 +12,11 @@ class CursorTests {
     fun `cursor can be opened`() {
         val env = createRandomTestEnv(mapSize = 10485760UL) // 10MB
         env.use {
-            env.beginTxn {
-                val dbi = dbiOpen()
-                val cursor = openCursor(dbi)
-                cursor.use {
-                    assertNotNull(cursor)
+            env.beginTxn { txn: Txn ->
+                val dbi = txn.dbiOpen()
+                val cursor = txn.openCursor(dbi)
+                cursor.use { c ->
+                    assertNotNull(c)
                 }
             }
         }
