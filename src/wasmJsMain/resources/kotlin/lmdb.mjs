@@ -1,7 +1,9 @@
-var loadLmdbWASM = (() => {
-  
-  return (
-async function(moduleArg = {}) {
+// This code implements the `-sMODULARIZE` settings by taking the generated
+// JS program code (INNER_JS_CODE) and wrapping it in a factory function.
+
+// When targetting node and ES6 we use `await import ..` in the generated code
+// so the outer function needs to be marked as async.
+async function loadLmdbWASM(moduleArg = {}) {
   var moduleRtn;
 
 // include: shell.js
@@ -19,13 +21,6 @@ async function(moduleArg = {}) {
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
 var Module = moduleArg;
-
-// Set up the promise that indicates the Module is initialized
-var readyPromiseResolve, readyPromiseReject;
-var readyPromise = new Promise((resolve, reject) => {
-  readyPromiseResolve = resolve;
-  readyPromiseReject = reject;
-});
 
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
@@ -78,7 +73,6 @@ if (ENVIRONMENT_IS_NODE) {
   var nodeVersion = process.versions.node;
   var numericVersion = nodeVersion.split('.').slice(0, 3);
   numericVersion = (numericVersion[0] * 10000) + (numericVersion[1] * 100) + (numericVersion[2].split('-')[0] * 1);
-  var minVersion = 160000;
   if (numericVersion < 160000) {
     throw new Error('This emscripten-generated code requires node v16.0.0 (detected v' + nodeVersion + ')');
   }
@@ -86,10 +80,9 @@ if (ENVIRONMENT_IS_NODE) {
   // These modules will usually be used on Node.js. Load them eagerly to avoid
   // the complexity of lazy-loading.
   var fs = require('fs');
-  var nodePath = require('path');
 
   if (_scriptName.startsWith('file:')) {
-    scriptDirectory = nodePath.dirname(require('url').fileURLToPath(_scriptName)) + '/';
+    scriptDirectory = require('path').dirname(require('url').fileURLToPath(_scriptName)) + '/';
   }
 
 // include: node_shell_read.js
@@ -190,7 +183,7 @@ if (ENVIRONMENT_IS_WORKER) {
 var out = console.log.bind(console);
 var err = console.error.bind(console);
 
-var IDBFS = 'IDBFS is no longer included by default; build with -lidbfs.js';
+
 var PROXYFS = 'PROXYFS is no longer included by default; build with -lproxyfs.js';
 var WORKERFS = 'WORKERFS is no longer included by default; build with -lworkerfs.js';
 var FETCHFS = 'FETCHFS is no longer included by default; build with -lfetchfs.js';
@@ -198,7 +191,7 @@ var ICASEFS = 'ICASEFS is no longer included by default; build with -licasefs.js
 var JSFILEFS = 'JSFILEFS is no longer included by default; build with -ljsfilefs.js';
 var OPFS = 'OPFS is no longer included by default; build with -lopfs.js';
 
-var NODEFS = 'NODEFS is no longer included by default; build with -lnodefs.js';
+
 
 // perform assertions in shell.js after we set up out() and err(), as otherwise
 // if an assertion fails it cannot print the message
@@ -225,8 +218,6 @@ if (typeof WebAssembly != 'object') {
 }
 
 // Wasm globals
-
-var wasmMemory;
 
 //========================================
 // Runtime essentials
@@ -255,41 +246,13 @@ function assert(condition, text) {
 // We used to include malloc/free by default in the past. Show a helpful error in
 // builds with assertions.
 
-// Memory management
-
-var HEAP,
-/** @type {!Int8Array} */
-  HEAP8,
-/** @type {!Uint8Array} */
-  HEAPU8,
-/** @type {!Int16Array} */
-  HEAP16,
-/** @type {!Uint16Array} */
-  HEAPU16,
-/** @type {!Int32Array} */
-  HEAP32,
-/** @type {!Uint32Array} */
-  HEAPU32,
-/** @type {!Float32Array} */
-  HEAPF32,
-/* BigInt64Array type is not correctly defined in closure
-/** not-@type {!BigInt64Array} */
-  HEAP64,
-/* BigUint64Array type is not correctly defined in closure
-/** not-t@type {!BigUint64Array} */
-  HEAPU64,
-/** @type {!Float64Array} */
-  HEAPF64;
-
-var runtimeInitialized = false;
-
 /**
  * Indicates whether filename is delivered via file protocol (as opposed to http/https)
  * @noinline
  */
 var isFileURI = (filename) => filename.startsWith('file://');
 
-// include: runtime_shared.js
+// include: runtime_common.js
 // include: runtime_stack_check.js
 // Initializes the stack cookie. Called at the startup of main and at the startup of each thread in pthreads mode.
 function writeStackCookie() {
@@ -359,6 +322,11 @@ function consumedModuleProp(prop) {
       }
     });
   }
+}
+
+function makeInvalidEarlyAccess(name) {
+  return () => assert(false, `call to '${name}' via reference taken before Wasm module initialization`);
+
 }
 
 function ignoredModuleProp(prop) {
@@ -446,8 +414,40 @@ function unexportedRuntimeSymbol(sym) {
 }
 
 // end include: runtime_debug.js
-// include: memoryprofiler.js
-// end include: memoryprofiler.js
+var readyPromiseResolve, readyPromiseReject;
+
+// Memory management
+
+var wasmMemory;
+
+var
+/** @type {!Int8Array} */
+  HEAP8,
+/** @type {!Uint8Array} */
+  HEAPU8,
+/** @type {!Int16Array} */
+  HEAP16,
+/** @type {!Uint16Array} */
+  HEAPU16,
+/** @type {!Int32Array} */
+  HEAP32,
+/** @type {!Uint32Array} */
+  HEAPU32,
+/** @type {!Float32Array} */
+  HEAPF32,
+/** @type {!Float64Array} */
+  HEAPF64;
+
+// BigInt64Array type is not correctly defined in closure
+var
+/** not-@type {!BigInt64Array} */
+  HEAP64,
+/* BigUint64Array type is not correctly defined in closure
+/** not-@type {!BigUint64Array} */
+  HEAPU64;
+
+var runtimeInitialized = false;
+
 
 
 function updateMemoryViews() {
@@ -464,10 +464,6 @@ function updateMemoryViews() {
   HEAPU64 = new BigUint64Array(b);
 }
 
-// end include: runtime_shared.js
-assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray != undefined && Int32Array.prototype.set != undefined,
-       'JS engine does not provide full typed array support');
-
 // In non-standalone/normal mode, we create the memory here.
 // include: runtime_init_memory.js
 // Create the wasm memory. (Note: this only applies if IMPORTED_MEMORY is defined)
@@ -475,6 +471,7 @@ assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' &
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 
 function initMemory() {
+
   
 
   if (Module['wasmMemory']) {
@@ -500,6 +497,12 @@ function initMemory() {
 }
 
 // end include: runtime_init_memory.js
+
+// include: memoryprofiler.js
+// end include: memoryprofiler.js
+// end include: runtime_common.js
+assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray != undefined && Int32Array.prototype.set != undefined,
+       'JS engine does not provide full typed array support');
 
 function preRun() {
   if (Module['preRun']) {
@@ -560,14 +563,6 @@ var runDependencies = 0;
 var dependenciesFulfilled = null; // overridden to take different actions when all run dependencies are fulfilled
 var runDependencyTracking = {};
 var runDependencyWatcher = null;
-
-function getUniqueRunDependency(id) {
-  var orig = id;
-  while (1) {
-    if (!runDependencyTracking[id]) return id;
-    id = orig + Math.random();
-  }
-}
 
 function addRunDependency(id) {
   runDependencies++;
@@ -654,7 +649,7 @@ function abort(what) {
   /** @suppress {checkTypes} */
   var e = new WebAssembly.RuntimeError(what);
 
-  readyPromiseReject(e);
+  readyPromiseReject?.(e);
   // Throw the error whether or not MODULARIZE is set because abort is used
   // in code paths apart from instantiation where an exception is expected
   // to be thrown when abort is called.
@@ -725,7 +720,7 @@ async function instantiateArrayBuffer(binaryFile, imports) {
 }
 
 async function instantiateAsync(binary, binaryFile, imports) {
-  if (!binary && typeof WebAssembly.instantiateStreaming == 'function'
+  if (!binary
       // Don't use streaming for file:// delivered objects in a webview, fetch them synchronously.
       && !isFileURI(binaryFile)
       // Avoid instantiateStreaming() on Node.js environment for now, as while
@@ -775,6 +770,7 @@ async function createWasm() {
     
     assert(wasmTable, 'table not found in wasm exports');
 
+    assignWasmExports(wasmExports);
     removeRunDependency('wasm-instantiate');
     return wasmExports;
   }
@@ -818,15 +814,9 @@ async function createWasm() {
   }
 
   wasmBinaryFile ??= findWasmBinary();
-  try {
-    var result = await instantiateAsync(wasmBinary, wasmBinaryFile, info);
-    var exports = receiveInstantiationResult(result);
-    return exports;
-  } catch (e) {
-    // If instantiation fails, reject the module ready promise.
-    readyPromiseReject(e);
-    return Promise.reject(e);
-  }
+  var result = await instantiateAsync(wasmBinary, wasmBinaryFile, info);
+  var exports = receiveInstantiationResult(result);
+  return exports;
 }
 
 // end include: preamble.js
@@ -1068,6 +1058,18 @@ async function createWasm() {
   
   var UTF8Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder() : undefined;
   
+  var findStringEnd = (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
+      var maxIdx = idx + maxBytesToRead;
+      if (ignoreNul) return maxIdx;
+      // TextDecoder needs to know the byte length in advance, it doesn't stop on
+      // null terminator by itself.
+      // As a tiny code save trick, compare idx against maxIdx using a negation,
+      // so that maxBytesToRead=undefined/NaN means Infinity.
+      while (heapOrArray[idx] && !(idx >= maxIdx)) ++idx;
+      return idx;
+    };
+  
+  
     /**
      * Given a pointer 'idx' to a null-terminated UTF8-encoded string in the given
      * array that contains uint8 values, returns a copy of that string as a
@@ -1075,25 +1077,18 @@ async function createWasm() {
      * heapOrArray is either a regular array, or a JavaScript typed array view.
      * @param {number=} idx
      * @param {number=} maxBytesToRead
+     * @param {boolean=} ignoreNul - If true, the function will not stop on a NUL character.
      * @return {string}
      */
-  var UTF8ArrayToString = (heapOrArray, idx = 0, maxBytesToRead = NaN) => {
-      var endIdx = idx + maxBytesToRead;
-      var endPtr = idx;
-      // TextDecoder needs to know the byte length in advance, it doesn't stop on
-      // null terminator by itself.  Also, use the length info to avoid running tiny
-      // strings through TextDecoder, since .subarray() allocates garbage.
-      // (As a tiny code save trick, compare endPtr against endIdx using a negation,
-      // so that undefined/NaN means Infinity)
-      while (heapOrArray[endPtr] && !(endPtr >= endIdx)) ++endPtr;
+  var UTF8ArrayToString = (heapOrArray, idx = 0, maxBytesToRead, ignoreNul) => {
+  
+      var endPtr = findStringEnd(heapOrArray, idx, maxBytesToRead, ignoreNul);
   
       // When using conditional TextDecoder, skip it for short strings as the overhead of the native call is not worth it.
       if (endPtr - idx > 16 && heapOrArray.buffer && UTF8Decoder) {
         return UTF8Decoder.decode(heapOrArray.subarray(idx, endPtr));
       }
       var str = '';
-      // If building with TextDecoder, we have already computed the string length
-      // above, so test loop end condition against that
       while (idx < endPtr) {
         // For UTF8 byte structure, see:
         // http://en.wikipedia.org/wiki/UTF-8#Description
@@ -1154,18 +1149,10 @@ async function createWasm() {
       var startIdx = outIdx;
       var endIdx = outIdx + maxBytesToWrite - 1; // -1 for string null terminator.
       for (var i = 0; i < str.length; ++i) {
-        // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code
-        // unit, not a Unicode code point of the character! So decode
-        // UTF16->UTF32->UTF8.
-        // See http://unicode.org/faq/utf_bom.html#utf16-3
         // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description
         // and https://www.ietf.org/rfc/rfc2279.txt
         // and https://tools.ietf.org/html/rfc3629
-        var u = str.charCodeAt(i); // possibly a lead surrogate
-        if (u >= 0xD800 && u <= 0xDFFF) {
-          var u1 = str.charCodeAt(++i);
-          u = 0x10000 + ((u & 0x3FF) << 10) | (u1 & 0x3FF);
-        }
+        var u = str.codePointAt(i);
         if (u <= 0x7F) {
           if (outIdx >= endIdx) break;
           heap[outIdx++] = u;
@@ -1185,6 +1172,9 @@ async function createWasm() {
           heap[outIdx++] = 0x80 | ((u >> 12) & 63);
           heap[outIdx++] = 0x80 | ((u >> 6) & 63);
           heap[outIdx++] = 0x80 | (u & 63);
+          // Gotcha: if codePoint is over 0xFFFF, it is represented as a surrogate pair in UTF-16.
+          // We need to manually skip over the second code unit for correct iteration.
+          i++;
         }
       }
       // Null-terminate the pointer to the buffer.
@@ -1731,6 +1721,14 @@ async function createWasm() {
   
   var FS_createDataFile = (...args) => FS.createDataFile(...args);
   
+  var getUniqueRunDependency = (id) => {
+      var orig = id;
+      while (1) {
+        if (!runDependencyTracking[id]) return id;
+        id = orig + Math.random();
+      }
+    };
+  
   var preloadPlugins = [];
   var FS_handledByPreloadPlugin = (byteArray, fullname, finish, onerror) => {
       // Ensure plugins are ready.
@@ -1802,17 +1800,12 @@ async function createWasm() {
   
   
   
-  
-  
   var IDBFS = {
   dbs:{
   },
   indexedDB:() => {
-        if (typeof indexedDB != 'undefined') return indexedDB;
-        var ret = null;
-        if (typeof window == 'object') ret = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
-        assert(ret, 'IDBFS used, but indexedDB not supported');
-        return ret;
+        assert(typeof indexedDB != 'undefined', 'IDBFS used, but indexedDB not supported');
+        return indexedDB;
       },
   DB_VERSION:21,
   DB_STORE_NAME:"FILE_DATA",
@@ -2599,15 +2592,13 @@ async function createWasm() {
      *   maximum number of bytes to read. You can omit this parameter to scan the
      *   string until the first 0 byte. If maxBytesToRead is passed, and the string
      *   at [ptr, ptr+maxBytesToReadr[ contains a null byte in the middle, then the
-     *   string will cut short at that byte index (i.e. maxBytesToRead will not
-     *   produce a string of exact length [ptr, ptr+maxBytesToRead[) N.B. mixing
-     *   frequent uses of UTF8ToString() with and without maxBytesToRead may throw
-     *   JS JIT optimizations off, so it is worth to consider consistently using one
+     *   string will cut short at that byte index.
+     * @param {boolean=} ignoreNul - If true, the function will not stop on a NUL character.
      * @return {string}
      */
-  var UTF8ToString = (ptr, maxBytesToRead) => {
+  var UTF8ToString = (ptr, maxBytesToRead, ignoreNul) => {
       assert(typeof ptr == 'number', `UTF8ToString expects a number (got ${typeof ptr})`);
-      return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead) : '';
+      return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead, ignoreNul) : '';
     };
   
   var strError = (errno) => UTF8ToString(_strerror(errno));
@@ -2747,6 +2738,9 @@ async function createWasm() {
               current_path = PATH.dirname(current_path);
               if (FS.isRoot(current)) {
                 path = current_path + '/' + parts.slice(i + 1).join('/');
+                // We're making progress here, don't let many consecutive ..'s
+                // lead to ELOOP
+                nlinks--;
                 continue linkloop;
               } else {
                 current = current.parent;
@@ -3763,28 +3757,24 @@ async function createWasm() {
         if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
           throw new Error(`Invalid encoding type "${opts.encoding}"`);
         }
-        var ret;
         var stream = FS.open(path, opts.flags);
         var stat = FS.stat(path);
         var length = stat.size;
         var buf = new Uint8Array(length);
         FS.read(stream, buf, 0, length, 0);
         if (opts.encoding === 'utf8') {
-          ret = UTF8ArrayToString(buf);
-        } else if (opts.encoding === 'binary') {
-          ret = buf;
+          buf = UTF8ArrayToString(buf);
         }
         FS.close(stream);
-        return ret;
+        return buf;
       },
   writeFile(path, data, opts = {}) {
         opts.flags = opts.flags || 577;
         var stream = FS.open(path, opts.flags, opts.mode);
         if (typeof data == 'string') {
-          var buf = new Uint8Array(lengthBytesUTF8(data)+1);
-          var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
-          FS.write(stream, buf, 0, actualNumBytes, undefined, opts.canOwn);
-        } else if (ArrayBuffer.isView(data)) {
+          data = new Uint8Array(intArrayFromString(data, true));
+        }
+        if (ArrayBuffer.isView(data)) {
           FS.write(stream, data, 0, data.byteLength, undefined, opts.canOwn);
         } else {
           throw new Error('Unsupported data type');
@@ -4323,15 +4313,15 @@ async function createWasm() {
       },
   writeStatFs(buf, stats) {
         HEAP32[(((buf)+(4))>>2)] = stats.bsize;
-        HEAP32[(((buf)+(40))>>2)] = stats.bsize;
-        HEAP32[(((buf)+(8))>>2)] = stats.blocks;
-        HEAP32[(((buf)+(12))>>2)] = stats.bfree;
-        HEAP32[(((buf)+(16))>>2)] = stats.bavail;
-        HEAP32[(((buf)+(20))>>2)] = stats.files;
-        HEAP32[(((buf)+(24))>>2)] = stats.ffree;
-        HEAP32[(((buf)+(28))>>2)] = stats.fsid;
-        HEAP32[(((buf)+(44))>>2)] = stats.flags;  // ST_NOSUID
-        HEAP32[(((buf)+(36))>>2)] = stats.namelen;
+        HEAP32[(((buf)+(60))>>2)] = stats.bsize;
+        HEAP64[(((buf)+(8))>>3)] = BigInt(stats.blocks);
+        HEAP64[(((buf)+(16))>>3)] = BigInt(stats.bfree);
+        HEAP64[(((buf)+(24))>>3)] = BigInt(stats.bavail);
+        HEAP64[(((buf)+(32))>>3)] = BigInt(stats.files);
+        HEAP64[(((buf)+(40))>>3)] = BigInt(stats.ffree);
+        HEAP32[(((buf)+(48))>>2)] = stats.fsid;
+        HEAP32[(((buf)+(64))>>2)] = stats.flags;  // ST_NOSUID
+        HEAP32[(((buf)+(56))>>2)] = stats.namelen;
       },
   doMsync(addr, stream, len, flags, offset) {
         if (!FS.isFile(stream.node.mode)) {
@@ -4730,15 +4720,15 @@ async function createWasm() {
   
   
   var growMemory = (size) => {
-      var b = wasmMemory.buffer;
-      var pages = ((size - b.byteLength + 65535) / 65536) | 0;
+      var oldHeapSize = wasmMemory.buffer.byteLength;
+      var pages = ((size - oldHeapSize + 65535) / 65536) | 0;
       try {
         // round size grow request up to wasm page size (fixed 64KB per spec)
         wasmMemory.grow(pages); // .grow() takes a delta compared to the previous size
         updateMemoryViews();
         return 1 /*success*/;
       } catch(e) {
-        err(`growMemory: Attempted to grow heap from ${b.byteLength} bytes to ${size} bytes, but got error: ${e}`);
+        err(`growMemory: Attempted to grow heap from ${oldHeapSize} bytes to ${size} bytes, but got error: ${e}`);
       }
       // implicit 0 return to save code size (caller will cast "undefined" into 0
       // anyhow)
@@ -5015,17 +5005,16 @@ if (Module['wasmBinary']) wasmBinary = Module['wasmBinary'];
   'getTempRet0',
   'setTempRet0',
   'exitJS',
+  'withStackSave',
   'inetPton4',
   'inetNtop4',
   'inetPton6',
   'inetNtop6',
   'readSockaddr',
   'writeSockaddr',
-  'emscriptenLog',
   'readEmAsmArgs',
   'jstoi_q',
   'getExecutableName',
-  'listenOnce',
   'autoResumeAudioContext',
   'getDynCaller',
   'dynCall',
@@ -5047,20 +5036,12 @@ if (Module['wasmBinary']) wasmBinary = Module['wasmBinary'];
   'ASSERTIONS',
   'ccall',
   'cwrap',
-  'uleb128Encode',
-  'sigToWasmTypes',
-  'generateFuncType',
   'convertJsFunctionToWasm',
   'getEmptyTableSlot',
   'updateTableMap',
   'getFunctionAddress',
   'addFunction',
   'removeFunction',
-  'reallyNegative',
-  'unSign',
-  'strLen',
-  'reSign',
-  'formatString',
   'intArrayToString',
   'AsciiToString',
   'stringToAscii',
@@ -5110,7 +5091,6 @@ if (Module['wasmBinary']) wasmBinary = Module['wasmBinary'];
   'registerGamepadEventCallback',
   'registerBeforeUnloadEventCallback',
   'fillBatteryEventData',
-  'battery',
   'registerBatteryEventCallback',
   'setCanvasElementSize',
   'getCanvasElementSize',
@@ -5217,6 +5197,7 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'alignMemory',
   'mmapAlloc',
   'wasmTable',
+  'getUniqueRunDependency',
   'noExitRuntime',
   'addOnPreRun',
   'addOnPostRun',
@@ -5412,6 +5393,131 @@ unexportedSymbols.forEach(unexportedRuntimeSymbol);
 function checkIncomingModuleAPI() {
   ignoredModuleProp('fetchSettings');
 }
+
+// Imports from the Wasm binary.
+var _mdb_version = Module['_mdb_version'] = makeInvalidEarlyAccess('_mdb_version');
+var _mdb_strerror = Module['_mdb_strerror'] = makeInvalidEarlyAccess('_mdb_strerror');
+var _strerror = makeInvalidEarlyAccess('_strerror');
+var _mdb_cmp = Module['_mdb_cmp'] = makeInvalidEarlyAccess('_mdb_cmp');
+var _mdb_dcmp = Module['_mdb_dcmp'] = makeInvalidEarlyAccess('_mdb_dcmp');
+var _mdb_env_sync = Module['_mdb_env_sync'] = makeInvalidEarlyAccess('_mdb_env_sync');
+var _mdb_txn_renew = Module['_mdb_txn_renew'] = makeInvalidEarlyAccess('_mdb_txn_renew');
+var _mdb_txn_begin = Module['_mdb_txn_begin'] = makeInvalidEarlyAccess('_mdb_txn_begin');
+var _malloc = Module['_malloc'] = makeInvalidEarlyAccess('_malloc');
+var _free = Module['_free'] = makeInvalidEarlyAccess('_free');
+var _mdb_txn_id = Module['_mdb_txn_id'] = makeInvalidEarlyAccess('_mdb_txn_id');
+var _mdb_txn_reset = Module['_mdb_txn_reset'] = makeInvalidEarlyAccess('_mdb_txn_reset');
+var _mdb_txn_abort = Module['_mdb_txn_abort'] = makeInvalidEarlyAccess('_mdb_txn_abort');
+var _mdb_txn_commit = Module['_mdb_txn_commit'] = makeInvalidEarlyAccess('_mdb_txn_commit');
+var _mdb_env_create = Module['_mdb_env_create'] = makeInvalidEarlyAccess('_mdb_env_create');
+var _mdb_env_set_mapsize = Module['_mdb_env_set_mapsize'] = makeInvalidEarlyAccess('_mdb_env_set_mapsize');
+var _mdb_env_set_maxdbs = Module['_mdb_env_set_maxdbs'] = makeInvalidEarlyAccess('_mdb_env_set_maxdbs');
+var _mdb_env_set_maxreaders = Module['_mdb_env_set_maxreaders'] = makeInvalidEarlyAccess('_mdb_env_set_maxreaders');
+var _mdb_env_get_maxreaders = Module['_mdb_env_get_maxreaders'] = makeInvalidEarlyAccess('_mdb_env_get_maxreaders');
+var _mdb_env_open = Module['_mdb_env_open'] = makeInvalidEarlyAccess('_mdb_env_open');
+var _mdb_env_close = Module['_mdb_env_close'] = makeInvalidEarlyAccess('_mdb_env_close');
+var _mdb_get = Module['_mdb_get'] = makeInvalidEarlyAccess('_mdb_get');
+var _mdb_cursor_get = Module['_mdb_cursor_get'] = makeInvalidEarlyAccess('_mdb_cursor_get');
+var _mdb_cursor_put = Module['_mdb_cursor_put'] = makeInvalidEarlyAccess('_mdb_cursor_put');
+var _mdb_cursor_del = Module['_mdb_cursor_del'] = makeInvalidEarlyAccess('_mdb_cursor_del');
+var _mdb_cursor_open = Module['_mdb_cursor_open'] = makeInvalidEarlyAccess('_mdb_cursor_open');
+var _mdb_cursor_renew = Module['_mdb_cursor_renew'] = makeInvalidEarlyAccess('_mdb_cursor_renew');
+var _mdb_cursor_count = Module['_mdb_cursor_count'] = makeInvalidEarlyAccess('_mdb_cursor_count');
+var _mdb_cursor_close = Module['_mdb_cursor_close'] = makeInvalidEarlyAccess('_mdb_cursor_close');
+var _mdb_del = Module['_mdb_del'] = makeInvalidEarlyAccess('_mdb_del');
+var _mdb_put = Module['_mdb_put'] = makeInvalidEarlyAccess('_mdb_put');
+var _mdb_env_copy2 = Module['_mdb_env_copy2'] = makeInvalidEarlyAccess('_mdb_env_copy2');
+var _mdb_env_copy = Module['_mdb_env_copy'] = makeInvalidEarlyAccess('_mdb_env_copy');
+var _mdb_env_set_flags = Module['_mdb_env_set_flags'] = makeInvalidEarlyAccess('_mdb_env_set_flags');
+var _mdb_env_get_flags = Module['_mdb_env_get_flags'] = makeInvalidEarlyAccess('_mdb_env_get_flags');
+var _mdb_env_stat = Module['_mdb_env_stat'] = makeInvalidEarlyAccess('_mdb_env_stat');
+var _mdb_env_info = Module['_mdb_env_info'] = makeInvalidEarlyAccess('_mdb_env_info');
+var _mdb_dbi_open = Module['_mdb_dbi_open'] = makeInvalidEarlyAccess('_mdb_dbi_open');
+var _mdb_stat = Module['_mdb_stat'] = makeInvalidEarlyAccess('_mdb_stat');
+var _mdb_dbi_close = Module['_mdb_dbi_close'] = makeInvalidEarlyAccess('_mdb_dbi_close');
+var _mdb_dbi_flags = Module['_mdb_dbi_flags'] = makeInvalidEarlyAccess('_mdb_dbi_flags');
+var _mdb_drop = Module['_mdb_drop'] = makeInvalidEarlyAccess('_mdb_drop');
+var _mdb_env_get_maxkeysize = Module['_mdb_env_get_maxkeysize'] = makeInvalidEarlyAccess('_mdb_env_get_maxkeysize');
+var _mdb_reader_check = Module['_mdb_reader_check'] = makeInvalidEarlyAccess('_mdb_reader_check');
+var _access = Module['_access'] = makeInvalidEarlyAccess('_access');
+var _closedir = Module['_closedir'] = makeInvalidEarlyAccess('_closedir');
+var _fflush = makeInvalidEarlyAccess('_fflush');
+var _emscripten_stack_get_end = makeInvalidEarlyAccess('_emscripten_stack_get_end');
+var _emscripten_stack_get_base = makeInvalidEarlyAccess('_emscripten_stack_get_base');
+var _mkdir = Module['_mkdir'] = makeInvalidEarlyAccess('_mkdir');
+var _emscripten_builtin_memalign = makeInvalidEarlyAccess('_emscripten_builtin_memalign');
+var _opendir = Module['_opendir'] = makeInvalidEarlyAccess('_opendir');
+var _readdir = Module['_readdir'] = makeInvalidEarlyAccess('_readdir');
+var _rmdir = Module['_rmdir'] = makeInvalidEarlyAccess('_rmdir');
+var _unlink = Module['_unlink'] = makeInvalidEarlyAccess('_unlink');
+var _emscripten_stack_init = makeInvalidEarlyAccess('_emscripten_stack_init');
+var _emscripten_stack_get_free = makeInvalidEarlyAccess('_emscripten_stack_get_free');
+var __emscripten_stack_restore = makeInvalidEarlyAccess('__emscripten_stack_restore');
+var __emscripten_stack_alloc = makeInvalidEarlyAccess('__emscripten_stack_alloc');
+var _emscripten_stack_get_current = makeInvalidEarlyAccess('_emscripten_stack_get_current');
+
+function assignWasmExports(wasmExports) {
+  Module['_mdb_version'] = _mdb_version = createExportWrapper('mdb_version', 3);
+  Module['_mdb_strerror'] = _mdb_strerror = createExportWrapper('mdb_strerror', 1);
+  _strerror = createExportWrapper('strerror', 1);
+  Module['_mdb_cmp'] = _mdb_cmp = createExportWrapper('mdb_cmp', 4);
+  Module['_mdb_dcmp'] = _mdb_dcmp = createExportWrapper('mdb_dcmp', 4);
+  Module['_mdb_env_sync'] = _mdb_env_sync = createExportWrapper('mdb_env_sync', 2);
+  Module['_mdb_txn_renew'] = _mdb_txn_renew = createExportWrapper('mdb_txn_renew', 1);
+  Module['_mdb_txn_begin'] = _mdb_txn_begin = createExportWrapper('mdb_txn_begin', 4);
+  Module['_malloc'] = _malloc = createExportWrapper('malloc', 1);
+  Module['_free'] = _free = createExportWrapper('free', 1);
+  Module['_mdb_txn_id'] = _mdb_txn_id = createExportWrapper('mdb_txn_id', 1);
+  Module['_mdb_txn_reset'] = _mdb_txn_reset = createExportWrapper('mdb_txn_reset', 1);
+  Module['_mdb_txn_abort'] = _mdb_txn_abort = createExportWrapper('mdb_txn_abort', 1);
+  Module['_mdb_txn_commit'] = _mdb_txn_commit = createExportWrapper('mdb_txn_commit', 1);
+  Module['_mdb_env_create'] = _mdb_env_create = createExportWrapper('mdb_env_create', 1);
+  Module['_mdb_env_set_mapsize'] = _mdb_env_set_mapsize = createExportWrapper('mdb_env_set_mapsize', 2);
+  Module['_mdb_env_set_maxdbs'] = _mdb_env_set_maxdbs = createExportWrapper('mdb_env_set_maxdbs', 2);
+  Module['_mdb_env_set_maxreaders'] = _mdb_env_set_maxreaders = createExportWrapper('mdb_env_set_maxreaders', 2);
+  Module['_mdb_env_get_maxreaders'] = _mdb_env_get_maxreaders = createExportWrapper('mdb_env_get_maxreaders', 2);
+  Module['_mdb_env_open'] = _mdb_env_open = createExportWrapper('mdb_env_open', 4);
+  Module['_mdb_env_close'] = _mdb_env_close = createExportWrapper('mdb_env_close', 1);
+  Module['_mdb_get'] = _mdb_get = createExportWrapper('mdb_get', 4);
+  Module['_mdb_cursor_get'] = _mdb_cursor_get = createExportWrapper('mdb_cursor_get', 4);
+  Module['_mdb_cursor_put'] = _mdb_cursor_put = createExportWrapper('mdb_cursor_put', 4);
+  Module['_mdb_cursor_del'] = _mdb_cursor_del = createExportWrapper('mdb_cursor_del', 2);
+  Module['_mdb_cursor_open'] = _mdb_cursor_open = createExportWrapper('mdb_cursor_open', 3);
+  Module['_mdb_cursor_renew'] = _mdb_cursor_renew = createExportWrapper('mdb_cursor_renew', 2);
+  Module['_mdb_cursor_count'] = _mdb_cursor_count = createExportWrapper('mdb_cursor_count', 2);
+  Module['_mdb_cursor_close'] = _mdb_cursor_close = createExportWrapper('mdb_cursor_close', 1);
+  Module['_mdb_del'] = _mdb_del = createExportWrapper('mdb_del', 4);
+  Module['_mdb_put'] = _mdb_put = createExportWrapper('mdb_put', 5);
+  Module['_mdb_env_copy2'] = _mdb_env_copy2 = createExportWrapper('mdb_env_copy2', 3);
+  Module['_mdb_env_copy'] = _mdb_env_copy = createExportWrapper('mdb_env_copy', 2);
+  Module['_mdb_env_set_flags'] = _mdb_env_set_flags = createExportWrapper('mdb_env_set_flags', 3);
+  Module['_mdb_env_get_flags'] = _mdb_env_get_flags = createExportWrapper('mdb_env_get_flags', 2);
+  Module['_mdb_env_stat'] = _mdb_env_stat = createExportWrapper('mdb_env_stat', 2);
+  Module['_mdb_env_info'] = _mdb_env_info = createExportWrapper('mdb_env_info', 2);
+  Module['_mdb_dbi_open'] = _mdb_dbi_open = createExportWrapper('mdb_dbi_open', 4);
+  Module['_mdb_stat'] = _mdb_stat = createExportWrapper('mdb_stat', 3);
+  Module['_mdb_dbi_close'] = _mdb_dbi_close = createExportWrapper('mdb_dbi_close', 2);
+  Module['_mdb_dbi_flags'] = _mdb_dbi_flags = createExportWrapper('mdb_dbi_flags', 3);
+  Module['_mdb_drop'] = _mdb_drop = createExportWrapper('mdb_drop', 3);
+  Module['_mdb_env_get_maxkeysize'] = _mdb_env_get_maxkeysize = createExportWrapper('mdb_env_get_maxkeysize', 1);
+  Module['_mdb_reader_check'] = _mdb_reader_check = createExportWrapper('mdb_reader_check', 2);
+  Module['_access'] = _access = createExportWrapper('access', 2);
+  Module['_closedir'] = _closedir = createExportWrapper('closedir', 1);
+  _fflush = createExportWrapper('fflush', 1);
+  _emscripten_stack_get_end = wasmExports['emscripten_stack_get_end'];
+  _emscripten_stack_get_base = wasmExports['emscripten_stack_get_base'];
+  Module['_mkdir'] = _mkdir = createExportWrapper('mkdir', 2);
+  _emscripten_builtin_memalign = createExportWrapper('emscripten_builtin_memalign', 2);
+  Module['_opendir'] = _opendir = createExportWrapper('opendir', 1);
+  Module['_readdir'] = _readdir = createExportWrapper('readdir', 1);
+  Module['_rmdir'] = _rmdir = createExportWrapper('rmdir', 1);
+  Module['_unlink'] = _unlink = createExportWrapper('unlink', 1);
+  _emscripten_stack_init = wasmExports['emscripten_stack_init'];
+  _emscripten_stack_get_free = wasmExports['emscripten_stack_get_free'];
+  __emscripten_stack_restore = wasmExports['_emscripten_stack_restore'];
+  __emscripten_stack_alloc = wasmExports['_emscripten_stack_alloc'];
+  _emscripten_stack_get_current = wasmExports['emscripten_stack_get_current'];
+}
 var wasmImports = {
   /** @export */
   __call_sighandler: ___call_sighandler,
@@ -5473,68 +5579,6 @@ var wasmImports = {
   proc_exit: _proc_exit
 };
 var wasmExports = await createWasm();
-// Imports from the Wasm binary.
-var ___wasm_call_ctors = createExportWrapper('__wasm_call_ctors', 0);
-var _mdb_version = Module['_mdb_version'] = createExportWrapper('mdb_version', 3);
-var _mdb_strerror = Module['_mdb_strerror'] = createExportWrapper('mdb_strerror', 1);
-var _strerror = createExportWrapper('strerror', 1);
-var _mdb_cmp = Module['_mdb_cmp'] = createExportWrapper('mdb_cmp', 4);
-var _mdb_dcmp = Module['_mdb_dcmp'] = createExportWrapper('mdb_dcmp', 4);
-var _mdb_env_sync = Module['_mdb_env_sync'] = createExportWrapper('mdb_env_sync', 2);
-var _mdb_txn_renew = Module['_mdb_txn_renew'] = createExportWrapper('mdb_txn_renew', 1);
-var _mdb_txn_begin = Module['_mdb_txn_begin'] = createExportWrapper('mdb_txn_begin', 4);
-var _malloc = Module['_malloc'] = createExportWrapper('malloc', 1);
-var _free = Module['_free'] = createExportWrapper('free', 1);
-var _mdb_txn_id = Module['_mdb_txn_id'] = createExportWrapper('mdb_txn_id', 1);
-var _mdb_txn_reset = Module['_mdb_txn_reset'] = createExportWrapper('mdb_txn_reset', 1);
-var _mdb_txn_abort = Module['_mdb_txn_abort'] = createExportWrapper('mdb_txn_abort', 1);
-var _mdb_txn_commit = Module['_mdb_txn_commit'] = createExportWrapper('mdb_txn_commit', 1);
-var _mdb_env_create = Module['_mdb_env_create'] = createExportWrapper('mdb_env_create', 1);
-var _mdb_env_set_mapsize = Module['_mdb_env_set_mapsize'] = createExportWrapper('mdb_env_set_mapsize', 2);
-var _mdb_env_set_maxdbs = Module['_mdb_env_set_maxdbs'] = createExportWrapper('mdb_env_set_maxdbs', 2);
-var _mdb_env_set_maxreaders = Module['_mdb_env_set_maxreaders'] = createExportWrapper('mdb_env_set_maxreaders', 2);
-var _mdb_env_get_maxreaders = Module['_mdb_env_get_maxreaders'] = createExportWrapper('mdb_env_get_maxreaders', 2);
-var _mdb_env_open = Module['_mdb_env_open'] = createExportWrapper('mdb_env_open', 4);
-var _mdb_env_close = Module['_mdb_env_close'] = createExportWrapper('mdb_env_close', 1);
-var _mdb_get = Module['_mdb_get'] = createExportWrapper('mdb_get', 4);
-var _mdb_cursor_get = Module['_mdb_cursor_get'] = createExportWrapper('mdb_cursor_get', 4);
-var _mdb_cursor_put = Module['_mdb_cursor_put'] = createExportWrapper('mdb_cursor_put', 4);
-var _mdb_cursor_del = Module['_mdb_cursor_del'] = createExportWrapper('mdb_cursor_del', 2);
-var _mdb_cursor_open = Module['_mdb_cursor_open'] = createExportWrapper('mdb_cursor_open', 3);
-var _mdb_cursor_renew = Module['_mdb_cursor_renew'] = createExportWrapper('mdb_cursor_renew', 2);
-var _mdb_cursor_count = Module['_mdb_cursor_count'] = createExportWrapper('mdb_cursor_count', 2);
-var _mdb_cursor_close = Module['_mdb_cursor_close'] = createExportWrapper('mdb_cursor_close', 1);
-var _mdb_del = Module['_mdb_del'] = createExportWrapper('mdb_del', 4);
-var _mdb_put = Module['_mdb_put'] = createExportWrapper('mdb_put', 5);
-var _mdb_env_copy2 = Module['_mdb_env_copy2'] = createExportWrapper('mdb_env_copy2', 3);
-var _mdb_env_copy = Module['_mdb_env_copy'] = createExportWrapper('mdb_env_copy', 2);
-var _mdb_env_set_flags = Module['_mdb_env_set_flags'] = createExportWrapper('mdb_env_set_flags', 3);
-var _mdb_env_get_flags = Module['_mdb_env_get_flags'] = createExportWrapper('mdb_env_get_flags', 2);
-var _mdb_env_stat = Module['_mdb_env_stat'] = createExportWrapper('mdb_env_stat', 2);
-var _mdb_env_info = Module['_mdb_env_info'] = createExportWrapper('mdb_env_info', 2);
-var _mdb_dbi_open = Module['_mdb_dbi_open'] = createExportWrapper('mdb_dbi_open', 4);
-var _mdb_stat = Module['_mdb_stat'] = createExportWrapper('mdb_stat', 3);
-var _mdb_dbi_close = Module['_mdb_dbi_close'] = createExportWrapper('mdb_dbi_close', 2);
-var _mdb_dbi_flags = Module['_mdb_dbi_flags'] = createExportWrapper('mdb_dbi_flags', 3);
-var _mdb_drop = Module['_mdb_drop'] = createExportWrapper('mdb_drop', 3);
-var _mdb_env_get_maxkeysize = Module['_mdb_env_get_maxkeysize'] = createExportWrapper('mdb_env_get_maxkeysize', 1);
-var _mdb_reader_check = Module['_mdb_reader_check'] = createExportWrapper('mdb_reader_check', 2);
-var _access = Module['_access'] = createExportWrapper('access', 2);
-var _closedir = Module['_closedir'] = createExportWrapper('closedir', 1);
-var _fflush = createExportWrapper('fflush', 1);
-var _emscripten_stack_get_end = wasmExports['emscripten_stack_get_end']
-var _emscripten_stack_get_base = wasmExports['emscripten_stack_get_base']
-var _mkdir = Module['_mkdir'] = createExportWrapper('mkdir', 2);
-var _emscripten_builtin_memalign = createExportWrapper('emscripten_builtin_memalign', 2);
-var _opendir = Module['_opendir'] = createExportWrapper('opendir', 1);
-var _readdir = Module['_readdir'] = createExportWrapper('readdir', 1);
-var _rmdir = Module['_rmdir'] = createExportWrapper('rmdir', 1);
-var _unlink = Module['_unlink'] = createExportWrapper('unlink', 1);
-var _emscripten_stack_init = wasmExports['emscripten_stack_init']
-var _emscripten_stack_get_free = wasmExports['emscripten_stack_get_free']
-var __emscripten_stack_restore = wasmExports['_emscripten_stack_restore']
-var __emscripten_stack_alloc = wasmExports['_emscripten_stack_alloc']
-var _emscripten_stack_get_current = wasmExports['emscripten_stack_get_current']
 
 
 // include: postamble.js
@@ -5579,7 +5623,7 @@ function run() {
 
     initRuntime();
 
-    readyPromiseResolve(Module);
+    readyPromiseResolve?.(Module);
     Module['onRuntimeInitialized']?.();
     consumedModuleProp('onRuntimeInitialized');
 
@@ -5662,7 +5706,15 @@ run();
 // We assign to the `moduleRtn` global here and configure closure to see
 // this as and extern so it won't get minified.
 
-moduleRtn = readyPromise;
+if (runtimeInitialized)  {
+  moduleRtn = Module;
+} else {
+  // Set up the promise that indicates the Module is initialized
+  moduleRtn = new Promise((resolve, reject) => {
+    readyPromiseResolve = resolve;
+    readyPromiseReject = reject;
+  });
+}
 
 // Assertion for attempting to access module properties on the incoming
 // moduleArg.  In the past we used this object as the prototype of the module
@@ -5685,6 +5737,7 @@ for (const prop of Object.keys(Module)) {
 
   return moduleRtn;
 }
-);
-})();
+
+// Export using a UMD style export, or ES6 exports if selected
 export default loadLmdbWASM;
+
