@@ -58,9 +58,6 @@ kotlin {
             }
         }
         nodejs()
-        compilerOptions {
-            freeCompilerArgs.add("-Xwasm-attach-js-exception")
-        }
     }
 
     listOf(mingwX64(), linuxX64(), linuxArm64(), macosX64(), macosArm64(),
@@ -104,6 +101,10 @@ kotlin {
 
 
         val wasmJsMain by getting {
+            languageSettings.apply {
+                optIn("kotlin.js.ExperimentalWasmJsInterop")
+                optIn("kotlin.wasm.ExperimentalWasmInterop")
+            }
             dependsOn(commonMain)
             resources.srcDirs("src/wasmJsMain/resources")
         }
