@@ -35,7 +35,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation("io.github.crowded-libs:kotlin-lmdb:0.3.3")
+                implementation("io.github.crowded-libs:kotlin-lmdb:0.3.5")
             }
         }
     }
@@ -48,7 +48,7 @@ kotlin {
 <dependency>
   <groupId>io.github.crowded-libs</groupId>
   <artifactId>kotlin-lmdb</artifactId>
-  <version>0.3.3</version>
+  <version>0.3.5</version>
 </dependency>
 ```
 
@@ -270,7 +270,35 @@ The wasmJs target provides LMDB functionality in web browsers and Node.js enviro
 - In browsers, databases persist in IndexedDB between sessions
 - In Node.js, databases behave similarly to other platforms
 - Always test wasmJs-specific functionality thoroughly in your target environment
-- You will need to setup a copy task for the js assets with your own project to ensure the modules load successfully. I haven't figured out how to make the packaging work seamlessly for consumption of the maven package yet. (pull request?)
+
+**Required Gradle Plugin for wasmJs:**
+
+The `kotlin-lmdb-wasm` Gradle plugin is **required** when using the wasmJs target. This plugin automatically extracts the necessary WASM runtime files (`lmdb-wrapper.mjs`, `lmdb.mjs`, and `lmdb.wasm`) from the `kotlin-lmdb` dependency and places them in the correct locations for your wasmJs compilation.
+
+**Why the plugin is needed:**
+- The wasmJs target uses `@WasmImport` annotations that require runtime files to be available as relative imports
+- The plugin extracts these files from the `kotlin-lmdb-wasm-js` artifact and copies them to both main and test WASM output directories
+- Without the plugin, you'll encounter "Module not found" errors when running wasmJs applications or tests
+
+**Setup in your project's build.gradle.kts:**
+```kotlin
+plugins {
+    alias(libs.plugins.kotlinMultiplatform)
+    // Add this plugin when using wasmJs target
+    id("io.github.crowded-libs.kotlin-lmdb-wasm") version "0.3.5"
+}
+
+kotlin {
+    wasmJs {
+        // your wasmJs configuration
+    }
+    sourceSets {
+        commonMain.dependencies {
+            implementation("io.github.crowded-libs:kotlin-lmdb:0.3.5")
+        }
+    }
+}
+```
 
 ## References
 

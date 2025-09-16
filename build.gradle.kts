@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "io.github.crowded-libs"
-version = "0.3.4"
+version = libs.versions.kotlin.lmdb.get()
 description = "Kotlin Multiplatform library for LMDB key-value store"
 
 repositories {
@@ -64,15 +64,15 @@ kotlin {
         iosArm64(), iosSimulatorArm64(), iosX64(), watchosArm32(),
         watchosArm64(), watchosSimulatorArm64(), tvosArm64(), tvosSimulatorArm64())
         .forEach { target ->
-            target.compilations.getByName("main") {
-                cinterops {
-                    val liblmdb by creating {
-                        defFile(project.file("src/nativeInterop/cinterop/liblmdb.def"))
-                        includeDirs("src/nativeInterop/cinterop/c/")
-                    }
+        target.compilations.getByName("main") {
+            cinterops {
+                val liblmdb by creating {
+                    defFile(project.file("src/nativeInterop/cinterop/liblmdb.def"))
+                    includeDirs("src/nativeInterop/cinterop/c/")
                 }
             }
         }
+    }
 
     sourceSets {
         val commonMain by getting
@@ -93,7 +93,7 @@ kotlin {
         val jvmMain by getting {
             dependsOn(jvmCommonMain)
         }
-        val nativeMain by creating { 
+        val nativeMain by creating {
             dependsOn(commonMain)
             languageSettings.optIn("kotlinx.cinterop.ExperimentalForeignApi")
         }
@@ -152,7 +152,7 @@ kotlin {
         val androidMain by getting {
             dependsOn(jvmCommonMain)
         }
-        val androidUnitTest by getting { 
+        val androidUnitTest by getting {
             dependsOn(jvmCommonTest)
             resources.srcDirs(jvmCommonMain.resources.srcDirs)
         }
@@ -286,22 +286,22 @@ abstract class CompileLmdbWasmTask : DefaultTask() {
         outDir.mkdirs()
 
         val sourceFiles = sourceDir.get().asFile.listFiles { file ->
-            file.name.endsWith(".c")
-        } ?: emptyArray()
+                file.name.endsWith(".c")
+            } ?: emptyArray()
 
         sourceFiles.forEach { sourceFile ->
             val outputFile = File(outDir, sourceFile.nameWithoutExtension + ".o")
 
             project.providers.exec {
-                commandLine(
-                    compiler.get(),
-                    "-c",
+                    commandLine(
+                        compiler.get(),
+                        "-c",
                     "-o", outputFile.absolutePath,
-                    *flags.get().toTypedArray(),
+                        *flags.get().toTypedArray(),
                     sourceFile.absolutePath
-                )
+                    )
             }.result.get().assertNormalExitValue()
-            
+
             logger.lifecycle("Compiled ${sourceFile.name} to ${outputFile.name}")
         }
     }
@@ -330,23 +330,23 @@ abstract class LinkLmdbWasmTask : DefaultTask() {
         output.parentFile.mkdirs()
 
         val linkArgs = mutableListOf<String>().apply {
-            add(linker.get())
-            add("-o")
-            add(output.absolutePath)
-            addAll(objectFiles.files.map { it.absolutePath })
-            addAll(flags.get())
-            
-            // Add JS prefix files if provided
-            jsPrefix.files.forEach { prefixFile ->
-                add("--extern-post-js")
-                add(prefixFile.absolutePath)
+                add(linker.get())
+                add("-o")
+                add(output.absolutePath)
+                addAll(objectFiles.files.map { it.absolutePath })
+                addAll(flags.get())
+
+                // Add JS prefix files if provided
+                jsPrefix.files.forEach { prefixFile ->
+                    add("--extern-post-js")
+                    add(prefixFile.absolutePath)
+                }
             }
-        }
 
         project.providers.exec {
-            commandLine(linkArgs)
+                commandLine(linkArgs)
         }.result.get().assertNormalExitValue()
-        
+
         logger.lifecycle("Linked LMDB WASM to ${output.name}")
     }
 }
@@ -358,52 +358,52 @@ val compileLmdbWasm by tasks.registering(CompileLmdbWasmTask::class) {
     outputDir.set(layout.buildDirectory.dir("lmdb-wasm/obj"))
     compiler.set(emscriptenPath)
     flags.set(listOf(
-        "-O2",
-        "-g",
-        "-DMDB_USE_POSIX_MUTEX=0",
-        "-DMDB_USE_ROBUST=0",
+            "-O2",
+            "-g",
+            "-DMDB_USE_POSIX_MUTEX=0",
+            "-DMDB_USE_ROBUST=0",
     ))
 }
 
 val linkLmdbWasm by tasks.registering(LinkLmdbWasmTask::class) {
     dependsOn(compileLmdbWasm)
-    
+
     objectFiles.from(compileLmdbWasm.map { 
-        fileTree(it.outputDir) { include("*.o") }
+            fileTree(it.outputDir) { include("*.o") }
     })
 
     val emscriptenPath = System.getenv("EMCC_PATH") ?: "/opt/homebrew/bin/emcc"
     outputFile.set(layout.buildDirectory.file("lmdb-wasm/lmdb.js"))
     linker.set(emscriptenPath)
-    
+
     flags.set(listOf(
         "-s", "WASM=1",
         "-s", "EXPORT_ES6=1",
         "-s", "MODULARIZE=1",
         "-s", "EXPORT_NAME='loadLmdbWASM'",
         "-s", "EXPORTED_FUNCTIONS=[" +
-            "'_mdb_env_create','_mdb_env_open','_mdb_env_close'," +
-            "'_mdb_env_set_maxdbs','_mdb_env_set_mapsize'," +
-            "'_mdb_env_get_maxreaders','_mdb_env_set_maxreaders'," +
-            "'_mdb_env_get_maxkeysize','_mdb_reader_check'," +
-            "'_mdb_env_get_flags','_mdb_env_set_flags'," +
-            "'_mdb_env_stat','_mdb_env_info'," +
-            "'_mdb_env_copy','_mdb_env_copy2','_mdb_env_sync'," +
-            "'_mdb_txn_begin','_mdb_txn_commit','_mdb_txn_abort'," +
-            "'_mdb_txn_reset','_mdb_txn_renew','_mdb_txn_id'," +
-            "'_mdb_dbi_open','_mdb_dbi_close','_mdb_drop'," +
-            "'_mdb_stat','_mdb_dbi_flags'," +
-            "'_mdb_cmp','_mdb_dcmp'," +
-            "'_mdb_get','_mdb_put','_mdb_del'," +
-            "'_mdb_cursor_open','_mdb_cursor_close'," +
-            "'_mdb_cursor_get','_mdb_cursor_put'," +
-            "'_mdb_cursor_del','_mdb_cursor_count'," +
-            "'_mdb_cursor_renew'," +
-            "'_mdb_strerror','_mdb_version'," +
-            "'_malloc','_free'," +
-            "'_mkdir','_access','_rmdir','_unlink'," +
-            "'_opendir','_readdir','_closedir'" +
-        "]",
+                "'_mdb_env_create','_mdb_env_open','_mdb_env_close'," +
+                "'_mdb_env_set_maxdbs','_mdb_env_set_mapsize'," +
+                "'_mdb_env_get_maxreaders','_mdb_env_set_maxreaders'," +
+                "'_mdb_env_get_maxkeysize','_mdb_reader_check'," +
+                "'_mdb_env_get_flags','_mdb_env_set_flags'," +
+                "'_mdb_env_stat','_mdb_env_info'," +
+                "'_mdb_env_copy','_mdb_env_copy2','_mdb_env_sync'," +
+                "'_mdb_txn_begin','_mdb_txn_commit','_mdb_txn_abort'," +
+                "'_mdb_txn_reset','_mdb_txn_renew','_mdb_txn_id'," +
+                "'_mdb_dbi_open','_mdb_dbi_close','_mdb_drop'," +
+                "'_mdb_stat','_mdb_dbi_flags'," +
+                "'_mdb_cmp','_mdb_dcmp'," +
+                "'_mdb_get','_mdb_put','_mdb_del'," +
+                "'_mdb_cursor_open','_mdb_cursor_close'," +
+                "'_mdb_cursor_get','_mdb_cursor_put'," +
+                "'_mdb_cursor_del','_mdb_cursor_count'," +
+                "'_mdb_cursor_renew'," +
+                "'_mdb_strerror','_mdb_version'," +
+                "'_malloc','_free'," +
+                "'_mkdir','_access','_rmdir','_unlink'," +
+                "'_opendir','_readdir','_closedir'" +
+                "]",
         "-s", "EXPORTED_RUNTIME_METHODS=['getValue','setValue','UTF8ToString','FS']",
         "-s", "IMPORTED_MEMORY=1",
         "-s", "ALLOW_MEMORY_GROWTH=1",
@@ -411,115 +411,11 @@ val linkLmdbWasm by tasks.registering(LinkLmdbWasmTask::class) {
         "-s", "INITIAL_MEMORY=16MB",
         "-s", "FORCE_FILESYSTEM=1",
         "-s", "FILESYSTEM=1",
-        "-lidbfs.js",
-        "-lnodefs.js",
-        "-s", "ERROR_ON_UNDEFINED_SYMBOLS=0",
-        "--no-entry"
-    ))
+            "-lidbfs.js",
+            "-lnodefs.js",
+            "-s",
+            "ERROR_ON_UNDEFINED_SYMBOLS=0",
+            "--no-entry",
+        ),
+    )
 }
-
-// Create a task to prepare LMDB WASM for inclusion in wasmJs resources
-val prepareLmdbWasmResources by tasks.registering(Copy::class) {
-    dependsOn(linkLmdbWasm)
-    
-    // First copy generated files from the build
-    from(linkLmdbWasm.map { task ->
-        task.outputFile.get().asFile.parentFile
-    }) {
-        include("*.js")
-        include("*.wasm")
-        rename { filename ->
-            when {
-                filename.endsWith(".js") -> "lmdb.mjs"
-                else -> filename
-            }
-        }
-    }
-    
-    // Also copy the wrapper file
-    from(layout.projectDirectory.file("src/wasmJsMain/resources/lmdb-wrapper.mjs"))
-    
-    // Copy to kotlin subdirectory to match import paths
-    into(layout.projectDirectory.dir("src/wasmJsMain/resources/kotlin"))
-}
-
-// Configure wasmJs compilation to depend on LMDB resources
-kotlin {
-    wasmJs().compilations.all {
-        if (name == "main") {
-            compileTaskProvider.configure {
-                dependsOn(prepareLmdbWasmResources)
-            }
-        }
-    }
-}
-
-// Fix task dependency issue
-tasks.named("wasmJsProcessResources") {
-    dependsOn(prepareLmdbWasmResources)
-}
-
-// Task to copy WASM resources to test execution directories
-val copyWasmResourcesForTests by tasks.registering {
-    description = "Copy WASM resources to test execution directories"
-    
-    doLast {
-        val buildDir = layout.buildDirectory.get().asFile
-        val resourcesKotlinDir = File("src/wasmJsMain/resources/kotlin")
-        
-        // Copy from kotlin subdirectory to test directories
-        if (resourcesKotlinDir.exists()) {
-            // Copy to Node.js test directory
-            val nodeTestDir = File(buildDir, "js/packages/${project.name}-wasm-js-test/kotlin")
-            if (nodeTestDir.exists() || nodeTestDir.mkdirs()) {
-                copy {
-                    from(resourcesKotlinDir) {
-                        include("*.mjs", "*.wasm")
-                    }
-                    into(nodeTestDir)
-                }
-                logger.lifecycle("Copied WASM resources to Node.js test directory: $nodeTestDir")
-            }
-            
-            // Copy to browser test directory
-            val browserTestDir = File(buildDir, "js/packages/${project.name}-wasm-js-test/kotlin")
-            if (browserTestDir.exists() || browserTestDir.mkdirs()) {
-                copy {
-                    from(resourcesKotlinDir) {
-                        include("*.mjs", "*.wasm")
-                    }
-                    into(browserTestDir)
-                }
-                logger.lifecycle("Copied WASM resources to browser test directory: $browserTestDir")
-            }
-            
-            // Also copy to the root of the test package for webpack resolution
-            val browserPackageRoot = File(buildDir, "js/packages/${project.name}-wasm-js-test")
-            if (browserPackageRoot.exists()) {
-                copy {
-                    from(resourcesKotlinDir) {
-                        include("*.mjs", "*.wasm")
-                    }
-                    into(browserPackageRoot)
-                }
-                logger.lifecycle("Copied WASM resources to browser package root: $browserPackageRoot")
-            }
-        }
-    }
-}
-
-// Configure test tasks to depend on resource copying
-tasks.matching { it.name == "wasmJsNodeTest" || it.name == "wasmJsBrowserTest" }.configureEach {
-    dependsOn(copyWasmResourcesForTests)
-}
-
-// Ensure WASM resources are available before webpack bundling
-tasks.matching { it.name.contains("webpack", ignoreCase = true) && it.name.contains("wasmJs") }.configureEach {
-    dependsOn(copyWasmResourcesForTests)
-}
-
-// Also ensure resources are copied for development bundle
-tasks.matching { it.name == "wasmJsBrowserDevelopmentWebpack" || it.name == "wasmJsBrowserProductionWebpack" }.configureEach {
-    dependsOn(copyWasmResourcesForTests)
-}
-

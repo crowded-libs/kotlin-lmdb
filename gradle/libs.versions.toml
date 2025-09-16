@@ -6,6 +6,7 @@ dokka = "2.0.0"
 kotlinx-io = "0.8.0"
 maven-publish = "0.34.0"
 jna = "5.17.0"
+kotlin-lmdb = "0.3.5"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }

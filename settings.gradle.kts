@@ -7,3 +7,4 @@ pluginManagement {
 }
 
 rootProject.name = "kotlin-lmdb"
+include(":lmdb-wasm-plugin")
