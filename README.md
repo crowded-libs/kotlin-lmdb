@@ -35,7 +35,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation("io.github.crowded-libs:kotlin-lmdb:0.3.5")
+                implementation("io.github.crowded-libs:kotlin-lmdb:0.3.6")
             }
         }
     }
@@ -48,7 +48,7 @@ kotlin {
 <dependency>
   <groupId>io.github.crowded-libs</groupId>
   <artifactId>kotlin-lmdb</artifactId>
-  <version>0.3.5</version>
+  <version>0.3.6</version>
 </dependency>
 ```
 
@@ -285,7 +285,7 @@ The `kotlin-lmdb-wasm` Gradle plugin is **required** when using the wasmJs targe
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     // Add this plugin when using wasmJs target
-    id("io.github.crowded-libs.kotlin-lmdb-wasm") version "0.3.5"
+    id("io.github.crowded-libs.kotlin-lmdb-wasm") version "0.3.6"
 }
 
 kotlin {
@@ -294,7 +294,7 @@ kotlin {
     }
     sourceSets {
         commonMain.dependencies {
-            implementation("io.github.crowded-libs:kotlin-lmdb:0.3.5")
+            implementation("io.github.crowded-libs:kotlin-lmdb:0.3.6")
         }
     }
 }
