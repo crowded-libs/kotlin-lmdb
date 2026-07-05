@@ -214,6 +214,10 @@ tasks {
     }
 }
 
+tasks.named("downloadKotlinNativeDistribution") {
+    outputs.file(layout.buildDirectory.file("konan.txt"))
+}
+
 android {
     namespace = "lmdb"
     compileSdk = libs.versions.android.compileSdk.get().toInt()

@@ -1,12 +1,12 @@
 [versions]
-agp = "8.11.2"
+agp = "9.1.0"
 android-compileSdk = "36"
 kotlin = "2.4.0"
-dokka = "2.0.0"
-kotlinx-io = "0.8.0"
-maven-publish = "0.34.0"
-jna = "5.17.0"
-kotlin-lmdb = "0.3.6"
+dokka = "2.2.0"
+kotlinx-io = "0.9.1"
+maven-publish = "0.37.0"
+jna = "5.19.1"
+kotlin-lmdb = "0.4.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
