@@ -408,7 +408,7 @@ internal object LmdbJna {
             val file = File(path)
             if (file.exists()) {
                 System.setProperty("jna.library.path", file.parent)
-                return Native.load(file.nameWithoutExtension, LmdbLibrary::class.java)
+                return Native.load(file.absolutePath, LmdbLibrary::class.java)
             } else {
                 throw UnsatisfiedLinkError("Specified library not found: $path")
             }

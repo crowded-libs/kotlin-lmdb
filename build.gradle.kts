@@ -16,6 +16,29 @@ group = "io.github.crowded-libs"
 version = libs.versions.kotlin.lmdb.get()
 description = "Kotlin Multiplatform library for LMDB key-value store"
 
+val hostLmdbPlatform = run {
+    val osName = System.getProperty("os.name").lowercase()
+    val osArch = System.getProperty("os.arch").lowercase()
+    when {
+        osName.contains("win") -> "mingwX64"
+        osName.contains("mac") && (osArch.contains("aarch64") || osArch.contains("arm64")) -> "macosArm64"
+        osName.contains("mac") -> "macosX64"
+        osName.contains("linux") && (osArch.contains("aarch64") || osArch.contains("arm64")) -> "linuxArm64"
+        osName.contains("linux") -> "linuxX64"
+        else -> throw GradleException("Unsupported host platform for LMDB unit tests: $osName/$osArch")
+    }
+}
+
+val hostLmdbLibraryName = when (hostLmdbPlatform) {
+    "mingwX64" -> "lmdb.dll"
+    "macosArm64", "macosX64" -> "liblmdb.dylib"
+    else -> "liblmdb.so"
+}
+
+val hostLmdbNativeLibrary = layout.projectDirectory.file(
+    "src/jvmCommonMain/resources/native-libs/$hostLmdbPlatform/$hostLmdbLibraryName"
+).asFile
+
 repositories {
     google()
     mavenCentral()
@@ -205,6 +228,9 @@ tasks {
     withType<Test> {
         testLogging {
             showStandardStreams = true
+        }
+        if (name.startsWith("test") && name.endsWith("UnitTest")) {
+            systemProperty("lmdb.native.lib", hostLmdbNativeLibrary.absolutePath)
         }
     }
 
