@@ -2,6 +2,8 @@
 
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.gradle.process.ExecOperations
+import javax.inject.Inject
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -97,7 +99,10 @@ kotlin {
             dependsOn(commonMain)
             languageSettings.optIn("kotlinx.cinterop.ExperimentalForeignApi")
         }
-        val nativeTest by creating { dependsOn(commonTest) }
+        val nativeTest by creating {
+            dependsOn(commonTest)
+            languageSettings.optIn("kotlinx.cinterop.ExperimentalForeignApi")
+        }
 
 
         val wasmJsMain by getting {
@@ -180,7 +185,18 @@ kotlin {
             languageSettings.apply {
                 optIn("kotlin.uuid.ExperimentalUuidApi")
                 optIn("kotlin.experimental.ExperimentalNativeApi")
-                optIn("kotlinx.cinterop.ExperimentalForeignApi")
+                val sourceSetName = name.lowercase()
+                if (
+                    sourceSetName.startsWith("native") ||
+                    sourceSetName.startsWith("ios") ||
+                    sourceSetName.startsWith("macos") ||
+                    sourceSetName.startsWith("linux") ||
+                    sourceSetName.startsWith("mingw") ||
+                    sourceSetName.startsWith("watchos") ||
+                    sourceSetName.startsWith("tvos")
+                ) {
+                    optIn("kotlinx.cinterop.ExperimentalForeignApi")
+                }
             }
         }
     }
@@ -268,6 +284,9 @@ mavenPublishing {
 
 // Custom tasks for compiling and linking LMDB for WASM
 abstract class CompileLmdbWasmTask : DefaultTask() {
+    @get:Inject
+    abstract val execOperations: ExecOperations
+
     @get:InputDirectory
     abstract val sourceDir: DirectoryProperty
 
@@ -292,7 +311,7 @@ abstract class CompileLmdbWasmTask : DefaultTask() {
         sourceFiles.forEach { sourceFile ->
             val outputFile = File(outDir, sourceFile.nameWithoutExtension + ".o")
 
-            project.providers.exec {
+            execOperations.exec {
                     commandLine(
                         compiler.get(),
                         "-c",
@@ -300,7 +319,7 @@ abstract class CompileLmdbWasmTask : DefaultTask() {
                         *flags.get().toTypedArray(),
                     sourceFile.absolutePath
                     )
-            }.result.get().assertNormalExitValue()
+            }.assertNormalExitValue()
 
             logger.lifecycle("Compiled ${sourceFile.name} to ${outputFile.name}")
         }
@@ -308,6 +327,9 @@ abstract class CompileLmdbWasmTask : DefaultTask() {
 }
 
 abstract class LinkLmdbWasmTask : DefaultTask() {
+    @get:Inject
+    abstract val execOperations: ExecOperations
+
     @get:InputFiles
     abstract val objectFiles: ConfigurableFileCollection
 
@@ -343,9 +365,9 @@ abstract class LinkLmdbWasmTask : DefaultTask() {
                 }
             }
 
-        project.providers.exec {
+        execOperations.exec {
                 commandLine(linkArgs)
-        }.result.get().assertNormalExitValue()
+        }.assertNormalExitValue()
 
         logger.lifecycle("Linked LMDB WASM to ${output.name}")
     }

@@ -3,6 +3,15 @@
 
 config.resolve = config.resolve || {};
 config.resolve.fallback = config.resolve.fallback || {};
+config.plugins = config.plugins || [];
+
+const webpack = require('webpack');
+
+config.plugins.push(
+    new webpack.NormalModuleReplacementPlugin(/^node:/, resource => {
+        resource.request = resource.request.replace(/^node:/, '');
+    })
+);
 
 // Provide fallbacks for Node.js modules that aren't available in the browser
 config.resolve.fallback.module = false;
@@ -21,3 +30,4 @@ config.ignoreWarnings.push(/Module not found: Error: Can't resolve 'fs'/);
 config.ignoreWarnings.push(/Module not found: Error: Can't resolve 'path'/);
 config.ignoreWarnings.push(/Module not found: Error: Can't resolve 'url'/);
 config.ignoreWarnings.push(/Module not found: Error: Can't resolve 'util'/);
+config.ignoreWarnings.push(/Module not found: Error: Can't resolve 'crypto'/);

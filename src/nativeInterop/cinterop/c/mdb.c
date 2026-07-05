@@ -3012,6 +3012,12 @@ mdb_txn_id(MDB_txn *txn)
     return txn->mt_txnid;
 }
 
+unsigned long long
+kotlin_lmdb_txn_id(MDB_txn *txn)
+{
+	return (unsigned long long)mdb_txn_id(txn);
+}
+
 /** Export or close DBI handles opened in this txn. */
 static void
 mdb_dbis_update(MDB_txn *txn, int keep)

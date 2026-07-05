@@ -10,11 +10,10 @@ actual class Txn internal actual constructor(val env: Env, parent: Txn?, vararg 
     internal actual var state: TxnState
     private var isClosed = false
 
-    @OptIn(UnsafeNumber::class)
     actual val id: ULong
         get() {
             checkReady()
-            return mdb_txn_id(ptr).toULong()
+            return kotlin_lmdb_txn_id(ptr)
         }
 
     internal actual constructor(env: Env, vararg options: TxnOption) : this(env, null, *options)

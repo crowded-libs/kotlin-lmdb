@@ -1,5 +1,5 @@
 plugins {
-    `kotlin-dsl`
+    id("org.jetbrains.kotlin.jvm")
     `java-gradle-plugin`
     alias(libs.plugins.maven.publish)
 }
@@ -32,8 +32,7 @@ repositories {
 }
 
 dependencies {
-    // Use Gradle embedded Kotlin for plugin implementation to avoid version mismatch warning
-    implementation(kotlin("gradle-plugin"))
+    compileOnly(kotlin("gradle-plugin"))
 }
 
 // Configure publishing

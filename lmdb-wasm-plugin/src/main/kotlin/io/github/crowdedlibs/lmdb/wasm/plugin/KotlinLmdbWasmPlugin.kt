@@ -32,9 +32,9 @@ class KotlinLmdbWasmPlugin : Plugin<Project> {
             val generatedDir = project.layout.buildDirectory.dir("generated/lmdb-wasm-runtime")
 
             val extractTask =
-                project.tasks.register("syncLmdbWasmResources", Sync::class.java) {
-                    group = "kotlin-lmdb"
-                    description = "Extract LMDB wasm runtime resources from kotlin-lmdb dependency"
+                project.tasks.register("syncLmdbWasmResources", Sync::class.java) { task ->
+                    task.group = "kotlin-lmdb"
+                    task.description = "Extract LMDB wasm runtime resources from kotlin-lmdb dependency"
 
                     // Use a provider that defers resolution to task execution time
                     val extractedDirsProvider = project.provider {
@@ -69,14 +69,14 @@ class KotlinLmdbWasmPlugin : Plugin<Project> {
                         dirs
                     }
 
-                    from(extractedDirsProvider) {
-                        include("lmdb-wrapper.mjs", "lmdb.mjs", "lmdb.wasm")
+                    task.from(extractedDirsProvider) { spec ->
+                        spec.include("lmdb-wrapper.mjs", "lmdb.mjs", "lmdb.wasm")
                     }
-                    from(extractedDirsProvider) {
-                        include("lmdb-wrapper.mjs", "lmdb.mjs", "lmdb.wasm")
-                        into("kotlin")
+                    task.from(extractedDirsProvider) { spec ->
+                        spec.include("lmdb-wrapper.mjs", "lmdb.mjs", "lmdb.wasm")
+                        spec.into("kotlin")
                     }
-                    into(generatedDir)
+                    task.into(generatedDir)
                 }
 
             // Attach as resources to make them packaged for both source sets
@@ -92,17 +92,17 @@ class KotlinLmdbWasmPlugin : Plugin<Project> {
             }
 
             // Wire into wasmJs resource processing tasks (main + test)
-            project.tasks.matching { it.name.startsWith("wasmJs") && it.name.endsWith("ProcessResources") }.configureEach {
-                dependsOn(extractTask)
+            project.tasks.matching { it.name.startsWith("wasmJs") && it.name.endsWith("ProcessResources") }.configureEach { task ->
+                task.dependsOn(extractTask)
             }
 
             // Create a separate task to copy resources to WASM output directories
-            val copyLmdbWasmTask = project.tasks.register("copyLmdbWasmToOutput") {
-                group = "kotlin-lmdb"
-                description = "Copy LMDB WASM resources to WASM output directories"
-                dependsOn(extractTask)
+            val copyLmdbWasmTask = project.tasks.register("copyLmdbWasmToOutput") { task ->
+                task.group = "kotlin-lmdb"
+                task.description = "Copy LMDB WASM resources to WASM output directories"
+                task.dependsOn(extractTask)
 
-                doLast {
+                task.doLast {
                     val wasmOutputDir = project.rootProject.layout.buildDirectory.dir("wasm").get().asFile
                     val generatedResourcesDir = generatedDir.get().asFile
 
@@ -147,8 +147,8 @@ class KotlinLmdbWasmPlugin : Plugin<Project> {
                 it.name.endsWith("wasmJsTestTestDevelopmentExecutableCompileSync") ||
                 it.name.endsWith("wasmJsDevelopmentExecutableCompileSync") ||
                 it.name.endsWith("wasmJsProductionExecutableCompileSync")
-            }.configureEach {
-                finalizedBy(copyLmdbWasmTask)
+            }.configureEach { task ->
+                task.finalizedBy(copyLmdbWasmTask)
             }
 
             // Expose directory as an extra property (for potential downstream usage)

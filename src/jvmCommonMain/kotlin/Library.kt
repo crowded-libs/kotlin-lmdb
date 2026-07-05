@@ -9,17 +9,12 @@ internal object Library {
     private const val LMDB_DEBUG_PROP = "lmdb.debug"
     
     val DEBUG = System.getProperty(LMDB_DEBUG_PROP) != null
+    val LMDB = LmdbJna
     
     init {
-        // Ensure the native library is loaded
-        LmdbJna // This will trigger the lazy loading in LmdbJna
-        
         if (DEBUG) {
             println("[LMDB] Library initialized using JNA interface")
-            println("[LMDB] Version: ${LmdbJna.mdb_version()}")
+            println("[LMDB] Version: ${LMDB.mdb_version()}")
         }
     }
-    
-    // Expose the JNA interface for internal use
-    val LMDB = LmdbJna
 }

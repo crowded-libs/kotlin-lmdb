@@ -1,7 +1,7 @@
 [versions]
 agp = "8.11.2"
 android-compileSdk = "36"
-kotlin = "2.2.20"
+kotlin = "2.4.0"
 dokka = "2.0.0"
 kotlinx-io = "0.8.0"
 maven-publish = "0.34.0"
@@ -17,5 +17,6 @@ jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
 [plugins]
 androidLibrary = { id = "com.android.library", version.ref = "agp" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }

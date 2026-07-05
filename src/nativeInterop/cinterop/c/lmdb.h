@@ -989,6 +989,13 @@ MDB_env *mdb_txn_env(MDB_txn *txn);
 	 */
 size_t mdb_txn_id(MDB_txn *txn);
 
+	/** @brief Return the transaction's ID using a fixed-width Kotlin interop type.
+	 *
+	 * Kotlin/Native commonization maps size_t to different unsigned widths on
+	 * different targets, so the multiplatform binding uses this stable wrapper.
+	 */
+unsigned long long kotlin_lmdb_txn_id(MDB_txn *txn);
+
 	/** @brief Commit all the operations of a transaction into the database.
 	 *
 	 * The transaction handle is freed. It and its cursors must not be used
