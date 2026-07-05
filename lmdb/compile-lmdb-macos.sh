@@ -4,7 +4,7 @@ if [ ! -d "lmdb" ]; then
   git clone https://git.openldap.org/openldap/openldap.git lmdb
 fi
 cd ./lmdb/libraries/liblmdb || exit
-git checkout LMDB_0.9.33
+git checkout LMDB_0.9.35
 
 declare -A build_outputs
 declare -A supported_targets=(

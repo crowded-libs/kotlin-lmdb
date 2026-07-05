@@ -23,6 +23,9 @@ class ModuleLoadingTest {
         try {
             val versionPtr = _mdb_version(major, minor, patch)
             assertNotNull(versionPtr)
+            assertEquals(0, _getValue(major, 2))
+            assertEquals(9, _getValue(minor, 2))
+            assertEquals(35, _getValue(patch, 2))
         } finally {
             _free(major)
             _free(minor)

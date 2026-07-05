@@ -8,28 +8,26 @@ package lmdb
  * @return A [LmdbVersion] object containing the major, minor, and patch version numbers
  */
 actual fun lmdbVersion(): LmdbVersion {
+    var majorPtr = 0
+    var minorPtr = 0
+    var patchPtr = 0
     try {
-        // Allocate memory for the version components
-        val majorPtr = LMDB.malloc(4) // int*
-        val minorPtr = LMDB.malloc(4) // int*
-        val patchPtr = LMDB.malloc(4) // int*
+        majorPtr = LMDB.malloc(4) // int*
+        minorPtr = LMDB.malloc(4) // int*
+        patchPtr = LMDB.malloc(4) // int*
 
-        // Call into the WASM binary to get the version
         LMDB.mdb_version(majorPtr, minorPtr, patchPtr)
 
-        // Extract the version components
         val major = LMDB.getValue(majorPtr, "i32")
         val minor = LMDB.getValue(minorPtr, "i32")
         val patch = LMDB.getValue(patchPtr, "i32")
 
-        // Free the allocated memory
-        LMDB.free(majorPtr)
-        LMDB.free(minorPtr)
-        LMDB.free(patchPtr)
-
         return LmdbVersion(major, minor, patch)
     } catch (e: Throwable) {
-        // Fallback to a fixed version if the WASM function fails
-        return LmdbVersion(0, 9, 70)
+        return LmdbVersion(0, 9, 35)
+    } finally {
+        if (majorPtr != 0) LMDB.free(majorPtr)
+        if (minorPtr != 0) LMDB.free(minorPtr)
+        if (patchPtr != 0) LMDB.free(patchPtr)
     }
 }

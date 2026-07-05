@@ -199,6 +199,9 @@ actual class Env : AutoCloseable {
         if (!wasmOptions.contains(EnvOption.WriteMap)) {
             wasmOptions.add(EnvOption.WriteMap)
         }
+        if (!wasmOptions.contains(EnvOption.NoLock)) {
+            wasmOptions.add(EnvOption.NoLock)
+        }
         
         val flags = wasmOptions.toFlags().toInt()
         val modeInt = mode.toInt(8)

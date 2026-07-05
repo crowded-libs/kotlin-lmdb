@@ -499,17 +499,12 @@ internal object LmdbJna {
                 // Use a more stable filename to avoid re-extraction
                 val tempFile = File(tempDir, "$LMDB_LIB_NAME-$platform-${libFileName}")
 
-                // Only extract if file doesn't exist or is older than the resource
-                if (!tempFile.exists() || tempFile.length() == 0L) {
-                    inputStream.use { input ->
-                        tempFile.outputStream().use { output ->
-                            input.copyTo(output)
-                        }
+                inputStream.use { input ->
+                    tempFile.outputStream().use { output ->
+                        input.copyTo(output)
                     }
-                    if (DEBUG) println("[LMDB-JNA] Extracted library to: ${tempFile.absolutePath}")
-                } else {
-                    if (DEBUG) println("[LMDB-JNA] Using existing extracted library: ${tempFile.absolutePath}")
                 }
+                if (DEBUG) println("[LMDB-JNA] Extracted library to: ${tempFile.absolutePath}")
 
                 // Make sure the file is executable on Unix-like systems
                 try {
