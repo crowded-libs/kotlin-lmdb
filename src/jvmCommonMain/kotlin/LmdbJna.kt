@@ -144,8 +144,7 @@ internal object LmdbJna {
     // Database operations
     fun mdb_dbi_open(txn: Pointer, name: String?, flags: Int): Int {
         val dbiRef = IntByReference()
-        val rc = lib.mdb_dbi_open(txn, name, flags, dbiRef)
-        if (rc != 0) return -rc // Return negative on error for compatibility
+        check(lib.mdb_dbi_open(txn, name, flags, dbiRef))
         return dbiRef.value
     }
 

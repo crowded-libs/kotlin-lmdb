@@ -9,9 +9,6 @@ actual class Dbi actual constructor(name: String?, tx: Txn, vararg options: DbiO
 
     init {
         dbiHandle = LmdbJna.mdb_dbi_open(tx.ptr, name, options.asIterable().toFlags().toInt())
-        if (dbiHandle < 0) {
-            throw LmdbException("Failed to open database: ${LmdbJna.mdb_strerror(dbiHandle)}")
-        }
     }
 
     actual fun stat(tx: Txn) : Stat {
