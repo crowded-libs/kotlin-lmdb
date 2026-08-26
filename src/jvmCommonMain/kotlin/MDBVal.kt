@@ -1,42 +1,32 @@
 package lmdb
 
 import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 class MDBVal internal constructor(val buffer: ByteBuffer) {
     companion object {
-        internal fun input(data: ByteArray) : MDBVal {
-            // Create a direct ByteBuffer with the data
-            val dataBuffer = ByteBuffer.allocateDirect(data.size)
-            dataBuffer.put(data)
-            dataBuffer.flip()
-            
-            // Return MDBVal with the data buffer
-            return MDBVal(dataBuffer)
+        /** Shared empty value for misses and no-data results. */
+        internal val EMPTY = MDBVal(ByteBuffer.allocateDirect(0))
+
+        internal fun input(data: ByteArray): MDBVal {
+            // Heap-backed wrapper, no native allocation: the JNA call paths stage input
+            // bytes into reusable NativeScratch memory themselves.
+            return MDBVal(ByteBuffer.wrap(data))
         }
 
-        internal fun output() : MDBVal {
-            // Create an empty direct ByteBuffer that will be filled by LMDB
-            // We'll use a reasonable default size that can be resized by JNI if needed
-            val buffer = ByteBuffer.allocateDirect(4096)
-            buffer.order(ByteOrder.nativeOrder())
-            return MDBVal(buffer)
-        }
-        
         /**
-         * Create an MDBVal from a JNA MDB_val structure
+         * Create an MDBVal view from a JNA MDB_val structure. Zero-copy: the buffer wraps
+         * the native memory the structure points at (LMDB pages or call scratch), so it is
+         * only valid until the next operation on the owning cursor/transaction.
          */
         internal fun fromMdbVal(mdbVal: MDB_val): MDBVal {
-            if (mdbVal.mv_data == null || mdbVal.mv_size == 0L) {
-                return MDBVal(ByteBuffer.allocateDirect(0))
+            val data = mdbVal.mv_data
+            if (data == null || mdbVal.mv_size == 0L) {
+                return EMPTY
             }
-            
-            // Create a ByteBuffer from the native pointer
-            val buffer = mdbVal.mv_data!!.getByteBuffer(0, mdbVal.mv_size)
-            return MDBVal(buffer)
+            return MDBVal(data.getByteBuffer(0, mdbVal.mv_size))
         }
     }
-    
+
     /**
      * Get the size of the data in this MDBVal
      */

@@ -8,6 +8,11 @@ actual class Txn internal actual constructor(env: Env, parent: Txn?, vararg opti
     internal val ptr: Pointer
     private val parentPtr: Pointer?
     internal actual var state: TxnState
+
+    // Reusable native staging for get/put/delete; created on first use, freed on close().
+    private var scratchOrNull: NativeScratch? = null
+    private val scratch: NativeScratch
+        get() = scratchOrNull ?: NativeScratch().also { scratchOrNull = it }
     
     actual val id: ULong
         get() {
@@ -84,21 +89,24 @@ actual class Txn internal actual constructor(env: Env, parent: Txn?, vararg opti
     
     actual fun get(dbi: Dbi, key: Val) : ValResult {
         checkReady()
-        // Use the direct get method that returns the MDB_val
-        val (resultCode, dataVal) = LmdbJna.mdb_get_direct(ptr, dbi.dbiHandle, key.mdbVal.buffer)
-        
-        return if (resultCode == 0 && dataVal != null) {
-            // Create Val from the returned MDB_val
-            val data = Val.fromMDBVal(MDBVal.fromMdbVal(dataVal))
-            buildReadResult(resultCode, key, data)
+        val s = scratch
+        s.stageKey(key.stagingBytes())
+        s.clearData()
+        val resultCode = LmdbJna.mdb_get(ptr, dbi.dbiHandle, s.keyVal, s.dataVal)
+        return if (resultCode == 0) {
+            // Zero-copy view into LMDB pages; valid until the next operation on this txn.
+            buildReadResult(resultCode, key, Val.fromMDBVal(MDBVal.fromMdbVal(s.dataVal)))
         } else {
-            buildReadResult(resultCode, key, Val.fromMDBVal(MDBVal.output()))
+            buildReadResult(resultCode, key, Val.fromMDBVal(MDBVal.EMPTY))
         }
     }
 
     actual fun put(dbi: Dbi, key: Val, data: Val, vararg options: PutOption) {
         checkReady()
-        check(LmdbJna.mdb_put(ptr, dbi.dbiHandle, key.mdbVal.buffer, data.mdbVal.buffer,
+        val s = scratch
+        s.stageKey(key.stagingBytes())
+        s.stageData(data.stagingBytes())
+        check(LmdbJna.mdb_put(ptr, dbi.dbiHandle, s.keyVal, s.dataVal,
             options.asIterable().toFlags().toInt()))
     }
 
@@ -115,6 +123,8 @@ actual class Txn internal actual constructor(env: Env, parent: Txn?, vararg opti
             LmdbJna.mdb_txn_abort(ptr)
         }
         state = Released
+        scratchOrNull?.close()
+        scratchOrNull = null
     }
 
     actual fun drop(dbi: Dbi) {
@@ -129,14 +139,19 @@ actual class Txn internal actual constructor(env: Env, parent: Txn?, vararg opti
 
     actual fun delete(dbi: Dbi, key: Val) {
         checkReady()
-        check(LmdbJna.mdb_del(ptr, dbi.dbiHandle, key.mdbVal.buffer, null))
+        val s = scratch
+        s.stageKey(key.stagingBytes())
+        check(LmdbJna.mdb_del(ptr, dbi.dbiHandle, s.keyVal, null))
     }
 
     actual fun delete(dbi: Dbi, key: Val, data: Val) {
         checkReady()
-        check(LmdbJna.mdb_del(ptr, dbi.dbiHandle, key.mdbVal.buffer, data.mdbVal.buffer))
+        val s = scratch
+        s.stageKey(key.stagingBytes())
+        s.stageData(data.stagingBytes())
+        check(LmdbJna.mdb_del(ptr, dbi.dbiHandle, s.keyVal, s.dataVal))
     }
-    
+
     private fun checkReady() {
         if (state != Ready) {
             throw LmdbException("Transaction is not in Ready state (current state: $state)")

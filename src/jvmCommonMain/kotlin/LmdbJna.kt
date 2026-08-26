@@ -177,30 +177,20 @@ internal object LmdbJna {
         return rc
     }
 
-    // Alternative get operation that returns the MDB_val directly
-    fun mdb_get_direct(txn: Pointer, dbi: Int, key: ByteBuffer): Pair<Int, MDB_val?> {
-        val keyVal = byteBufferToMdbVal(key)
-        val dataVal = MDB_val()
-
-        val rc = lib.mdb_get(txn, dbi, keyVal, dataVal)
-
-        return if (rc == 0) {
-            rc to dataVal
-        } else {
-            rc to null
-        }
+    // Key/data operations take caller-owned (reused) MDB_val structures; JNA writes the
+    // fields before the native call and reads them back after, so LMDB's in-place updates
+    // (result pointers into its pages) are visible to the caller with no per-call native
+    // allocation.
+    fun mdb_get(txn: Pointer, dbi: Int, key: MDB_val, data: MDB_val): Int {
+        return lib.mdb_get(txn, dbi, key, data)
     }
 
-    fun mdb_put(txn: Pointer, dbi: Int, key: ByteBuffer, data: ByteBuffer, flags: Int): Int {
-        val keyVal = byteBufferToMdbVal(key)
-        val dataVal = byteBufferToMdbVal(data)
-        return lib.mdb_put(txn, dbi, keyVal, dataVal, flags)
+    fun mdb_put(txn: Pointer, dbi: Int, key: MDB_val, data: MDB_val, flags: Int): Int {
+        return lib.mdb_put(txn, dbi, key, data, flags)
     }
 
-    fun mdb_del(txn: Pointer, dbi: Int, key: ByteBuffer, data: ByteBuffer?): Int {
-        val keyVal = byteBufferToMdbVal(key)
-        val dataVal = data?.let { byteBufferToMdbVal(it) }
-        return lib.mdb_del(txn, dbi, keyVal, dataVal)
+    fun mdb_del(txn: Pointer, dbi: Int, key: MDB_val, data: MDB_val?): Int {
+        return lib.mdb_del(txn, dbi, key, data)
     }
 
     // Cursor operations
@@ -218,36 +208,12 @@ internal object LmdbJna {
         return lib.mdb_cursor_renew(txn, cursor)
     }
 
-    fun mdb_cursor_get(cursor: Pointer, key: ByteBuffer, data: ByteBuffer, op: Int): Int {
-        val keyVal = byteBufferToMdbVal(key)
-        val dataVal = byteBufferToMdbVal(data)
-
-        val rc = lib.mdb_cursor_get(cursor, keyVal, dataVal, op)
-
-        if (rc == 0) {
-            // Update ByteBuffer positions based on returned data
-            if (keyVal.mv_data != null) {
-                key.position(0)
-                key.limit(keyVal.mv_size.toInt())
-                key.put(keyVal.mv_data!!.getByteArray(0, keyVal.mv_size.toInt()))
-                key.position(0)
-            }
-
-            if (dataVal.mv_data != null) {
-                data.position(0)
-                data.limit(dataVal.mv_size.toInt())
-                data.put(dataVal.mv_data!!.getByteArray(0, dataVal.mv_size.toInt()))
-                data.position(0)
-            }
-        }
-
-        return rc
+    fun mdb_cursor_get(cursor: Pointer, key: MDB_val, data: MDB_val, op: Int): Int {
+        return lib.mdb_cursor_get(cursor, key, data, op)
     }
 
-    fun mdb_cursor_put(cursor: Pointer, key: ByteBuffer, data: ByteBuffer, flags: Int): Int {
-        val keyVal = byteBufferToMdbVal(key)
-        val dataVal = byteBufferToMdbVal(data)
-        return lib.mdb_cursor_put(cursor, keyVal, dataVal, flags)
+    fun mdb_cursor_put(cursor: Pointer, key: MDB_val, data: MDB_val, flags: Int): Int {
+        return lib.mdb_cursor_put(cursor, key, data, flags)
     }
 
     fun mdb_cursor_del(cursor: Pointer, flags: Int): Int {
