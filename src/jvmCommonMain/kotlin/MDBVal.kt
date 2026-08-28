@@ -8,8 +8,6 @@ class MDBVal internal constructor(val buffer: ByteBuffer) {
         internal val EMPTY = MDBVal(ByteBuffer.allocateDirect(0))
 
         internal fun input(data: ByteArray): MDBVal {
-            // Heap-backed wrapper, no native allocation: the JNA call paths stage input
-            // bytes into reusable NativeScratch memory themselves.
             return MDBVal(ByteBuffer.wrap(data))
         }
 

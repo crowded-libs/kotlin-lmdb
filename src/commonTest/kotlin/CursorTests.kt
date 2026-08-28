@@ -176,6 +176,32 @@ class CursorTests {
             }
         }
     }
+
+    @Test
+    fun `SET and GET_BOTH keys survive a subsequent cursor operation`() {
+        val env = createRandomTestEnv(mapSize = 10485760UL)
+        env.use {
+            env.beginTxn {
+                val dbi = dbiOpen(options = arrayOf(DbiOption.DupSort))
+                openCursor(dbi).use { cursor ->
+                    val keyA = "key-a".encodeToByteArray()
+                    val keyB = "key-b".encodeToByteArray()
+                    cursor.put(keyA, "data-a1".encodeToByteArray())
+                    cursor.put(keyA, "data-a2".encodeToByteArray())
+                    cursor.put(keyB, "data-b".encodeToByteArray())
+
+                    val setResult = cursor.set(keyA)
+                    val bothResult = cursor.getBoth(keyA, "data-a1".encodeToByteArray())
+                    val rangeResult = cursor.getBothRange(keyA, "data-a".encodeToByteArray())
+                    cursor.set(keyB)
+
+                    assertEquals("key-a", setResult.key.toByteArray()!!.decodeToString())
+                    assertEquals("key-a", bothResult.key.toByteArray()!!.decodeToString())
+                    assertEquals("key-a", rangeResult.key.toByteArray()!!.decodeToString())
+                }
+            }
+        }
+    }
     
     @Test
     fun `cursor can set position using setRange`() {

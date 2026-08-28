@@ -177,10 +177,7 @@ internal object LmdbJna {
         return rc
     }
 
-    // Key/data operations take caller-owned (reused) MDB_val structures; JNA writes the
-    // fields before the native call and reads them back after, so LMDB's in-place updates
-    // (result pointers into its pages) are visible to the caller with no per-call native
-    // allocation.
+    // Callers pass live reused MDB_vals; JNA syncs fields around the native call.
     fun mdb_get(txn: Pointer, dbi: Int, key: MDB_val, data: MDB_val): Int {
         return lib.mdb_get(txn, dbi, key, data)
     }

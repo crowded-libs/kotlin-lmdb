@@ -3,13 +3,9 @@ package lmdb
 import com.sun.jna.Memory
 
 /**
- * Reusable native staging for LMDB calls: one MDB_val pair plus grow-on-demand input
- * buffers, allocated once per owner (cursor or transaction) instead of per operation.
- *
- * Not thread-safe by design — it rides on the LMDB contract that a transaction and its
- * cursors are used by at most one thread at a time. After a successful call the MDB_vals
- * point either at LMDB-owned pages or at this scratch, so results built from them are
- * views that stay valid only until the next operation on the same owner.
+ * Not thread-safe: a transaction and its cursors are used by at most one thread at a time.
+ * Staged MDB_vals and result views built from them stay valid only until the next operation
+ * on the same owner.
  */
 internal class NativeScratch : AutoCloseable {
     val keyVal = MDB_val()
@@ -41,12 +37,23 @@ internal class NativeScratch : AutoCloseable {
         dataVal.mv_size = 0
     }
 
+    /** Heap copy of the current key, for ops where LMDB leaves key pointing at this scratch. */
+    fun snapshotKey(): Val {
+        val data = keyVal.mv_data
+        val size = keyVal.mv_size.toInt()
+        if (data == null || size <= 0) return Val.fromMDBVal(MDBVal.EMPTY)
+        val bytes = ByteArray(size)
+        data.read(0, bytes, 0, size)
+        return bytes.toVal()
+    }
+
     private fun ensure(mem: Memory, size: Int): Memory {
         if (size <= mem.size()) return mem
         var newSize = mem.size()
         while (newSize < size) newSize = newSize shl 1
+        val grown = Memory(newSize)
         mem.close()
-        return Memory(newSize)
+        return grown
     }
 
     override fun close() {
