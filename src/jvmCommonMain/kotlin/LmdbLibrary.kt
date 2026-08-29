@@ -21,6 +21,7 @@ interface LmdbLibrary : Library {
     fun mdb_env_open(env: Pointer, path: String, flags: Int, mode: Int): Int
     fun mdb_env_close(env: Pointer)
     fun mdb_env_set_mapsize(env: Pointer, size: Long): Int
+    fun mdb_env_set_pagesize(env: Pointer, size: Int): Int
     fun mdb_env_set_maxreaders(env: Pointer, readers: Int): Int
     fun mdb_env_set_maxdbs(env: Pointer, dbs: Int): Int
     fun mdb_env_set_flags(env: Pointer, flags: Int, onoff: Int): Int
@@ -74,6 +75,37 @@ interface LmdbLibrary : Library {
     // Comparator callbacks
     fun mdb_set_compare(txn: Pointer, dbi: Int, cmp: MDB_cmp_func?): Int
     fun mdb_set_dupsort(txn: Pointer, dbi: Int, cmp: MDB_cmp_func?): Int
+
+    fun kmdb_env_set_encrypt_chacha8(env: Pointer, key: Pointer, keylen: Int): Int
+    fun kmdb_env_set_checksum_crc32(env: Pointer): Int
+    fun kmdb_env_set_encrypt_slot(env: Pointer, slot: Int, key: Pointer, keylen: Int, mac: Int): Int
+    fun kmdb_env_set_checksum_slot(env: Pointer, slot: Int, size: Int): Int
+    fun kmdb_set_host_callbacks(enc: KmdbEncHostCb?, sum: KmdbSumHostCb?)
+
+    fun interface KmdbEncHostCb : Callback {
+        fun invoke(
+            slot: Int,
+            src: Pointer?,
+            srcLen: Int,
+            dst: Pointer?,
+            dstLen: Int,
+            iv: Pointer?,
+            ivLen: Int,
+            encdec: Int
+        ): Int
+    }
+
+    fun interface KmdbSumHostCb : Callback {
+        fun invoke(
+            slot: Int,
+            src: Pointer?,
+            srcLen: Int,
+            dst: Pointer?,
+            dstLen: Int,
+            key: Pointer?,
+            keyLen: Int
+        )
+    }
     
     // Callback interface for comparators
     interface MDB_cmp_func : Callback {

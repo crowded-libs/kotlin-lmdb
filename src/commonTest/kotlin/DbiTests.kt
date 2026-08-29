@@ -320,12 +320,12 @@ class DbiTests {
 
     @Test
     fun `database can be emptied`() {
-        val env = createRandomTestEnv()
+        val env = createRandomTestEnv(maxDatabases = 10u)
         env.use {
             // Use a read-write transaction - add data first
             var hasData = false
             env.beginTxn {
-                val dbi = dbiOpen(null, DbiOption.Create)
+                val dbi = dbiOpen("to-empty", DbiOption.Create)
                 
                 // Add data
                 val key1 = "key1".encodeToByteArray()

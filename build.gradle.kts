@@ -414,6 +414,8 @@ val compileLmdbWasm by tasks.registering(CompileLmdbWasmTask::class) {
             "-g",
             "-DMDB_USE_POSIX_MUTEX=0",
             "-DMDB_USE_ROBUST=0",
+            // 1.0 page size can equal the wasm OS page (64KB), so meta msync is not at mmap base.
+            "-DMDB_MSYNC(addr,len,flags)=msync((env)->me_map,((char*)(addr)-(char*)((env)->me_map))+(len),(flags))",
     ))
 }
 
@@ -435,9 +437,10 @@ val linkLmdbWasm by tasks.registering(LinkLmdbWasmTask::class) {
         "-s", "EXPORT_NAME='loadLmdbWASM'",
         "-s", "EXPORTED_FUNCTIONS=[" +
                 "'_mdb_env_create','_mdb_env_open','_mdb_env_close'," +
-                "'_mdb_env_set_maxdbs','_mdb_env_set_mapsize'," +
+                "'_mdb_env_set_maxdbs','_mdb_env_set_mapsize','_mdb_env_set_pagesize'," +
                 "'_mdb_env_get_maxreaders','_mdb_env_set_maxreaders'," +
                 "'_mdb_env_get_maxkeysize','_mdb_reader_check'," +
+                "'_kmdb_env_set_encrypt_chacha8','_kmdb_env_set_checksum_crc32'," +
                 "'_mdb_env_get_flags','_mdb_env_set_flags'," +
                 "'_mdb_env_stat','_mdb_env_info'," +
                 "'_mdb_env_copy','_mdb_env_copy2','_mdb_env_sync'," +
@@ -467,6 +470,8 @@ val linkLmdbWasm by tasks.registering(LinkLmdbWasmTask::class) {
             "-lnodefs.js",
             "-s",
             "ERROR_ON_UNDEFINED_SYMBOLS=0",
+            "--js-library",
+            project.file("src/wasmJsMain/resources/kmdb-js-lib.js").absolutePath,
             "--no-entry",
         ),
     )

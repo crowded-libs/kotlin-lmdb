@@ -143,6 +143,42 @@ expect class Env() : AutoCloseable {
     var flags: Set<EnvOption>
 
     /**
+     * Sets the database page size in bytes. Defaults to the OS page size (0).
+     *
+     * Must be set before [open]. Supported sizes are powers of two up to 64KB.
+     * [maxKeySize] is derived from the page size and is only valid after [open].
+     */
+    var pageSize: UInt
+
+    /**
+     * Enable built-in ChaCha8 page encryption (unauthenticated, 32-byte key).
+     *
+     * Must be called before [open]. Implies remap-chunks. The same key must be
+     * supplied every time this environment is opened.
+     */
+    fun setEncryptionChaCha8(key: ByteArray)
+
+    /**
+     * Enable a custom page cipher. Must be called before [open].
+     *
+     * [encryptor] must return a byte array the same length as the source page.
+     * [macBytes] must be 0; AEAD tags are not wired through the trampoline yet.
+     * At most 4 custom encryptors may be active at once.
+     */
+    fun setEncryption(key: ByteArray, encryptor: EnvEncryptor, macBytes: UInt = 0u)
+
+    /**
+     * Enable built-in CRC32 page checksums (4 bytes per page). Must be called before [open].
+     */
+    fun setChecksumCrc32()
+
+    /**
+     * Enable a custom page checksum. Must be called before [open].
+     * [checksum] must return exactly [size] bytes.
+     */
+    fun setChecksum(checksum: EnvChecksum, size: UInt)
+
+    /**
      * Opens this environment at the provided [path] with the specified [options].
      *
      * If this function fails, [close] must be called to discard the [Env] handle.

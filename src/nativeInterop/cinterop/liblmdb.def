@@ -1,2 +1,2 @@
-headers = lmdb.h mdb.c midl.c
+headers = lmdb.h kmdb_ext.h mdb.c midl.c chacha8.c kmdb_ext.c
 package = lmdb

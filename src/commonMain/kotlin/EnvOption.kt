@@ -117,7 +117,24 @@ enum class EnvOption(val option: UInt)
      * if MDB_RESERVE is used; the caller is expected to overwrite all of the memory that
      * was reserved in that case. This flag may be changed at any time using mdb_env_set_flags().
      */
-    NoMemInit(0x1000000u)
+    NoMemInit(0x1000000u),
+
+    /**
+     * Encrypted environment. Read-only: set by [Env.setEncryptionChaCha8] or
+     * [Env.setEncryption], not by [Env.open] flags.
+     */
+    Encrypt(0x2000u),
+
+    /**
+     * Use the previous snapshot rather than the latest one.
+     */
+    PrevSnapshot(0x2000000u),
+
+    /**
+     * Don't use a single mmap; remap individual chunks. Implied by encryption.
+     * Requires LMDB built with MDB_RPAGE_CACHE (the default in this distribution).
+     */
+    RemapChunks(0x4000000u)
 }
 
 fun Iterable<EnvOption>.toFlags(): UInt =

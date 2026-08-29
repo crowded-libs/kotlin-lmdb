@@ -35,7 +35,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation("io.github.crowded-libs:kotlin-lmdb:0.3.6")
+                implementation("io.github.crowded-libs:kotlin-lmdb:0.5.0")
             }
         }
     }
@@ -48,7 +48,7 @@ kotlin {
 <dependency>
   <groupId>io.github.crowded-libs</groupId>
   <artifactId>kotlin-lmdb</artifactId>
-  <version>0.3.6</version>
+  <version>0.5.0</version>
 </dependency>
 ```
 
@@ -216,6 +216,27 @@ The library provides these pre-built comparers through the `ValComparer` enum:
 - `LENGTH_ONLY` - Compare only by length, ignoring content
 - `HASH_CODE` - Compare by hash code (for faster large value comparisons)
 
+## LMDB 1.0 (kotlin-lmdb 0.5.0)
+
+This release bundles **LMDB 1.0.1** plus ITS#10575 (Windows `WRITEMAP` commit). The on-disk format is **not compatible** with 0.9 in either direction.
+
+Migrate existing 0.9 environments with 0.9 `mdb_dump` and 1.0 `mdb_load`. Opening a 0.9 file with 0.5.0 fails (`MDB_VERSION_MISMATCH` / `MDB_INVALID`). wasm/IndexedDB stores must be wiped or migrated the same way.
+
+### Encryption and checksums
+
+Call these **before** `Env.open()`:
+
+```kotlin
+val env = Env()
+env.setEncryptionChaCha8(ByteArray(32) { /* 32-byte key */ })
+// optional: env.setChecksumCrc32()
+env.open(path)
+```
+
+ChaCha8 is unauthenticated encryption-at-rest (not a substitute for a MAC). Built-in CRC32 detects corruption, it is not a MAC. Custom `EnvEncryptor` / `EnvChecksum` callbacks are available on JVM and Native; on wasmJs they throw. wasmJs supports the built-in ChaCha8 and CRC32 paths.
+
+`maxKeySize` is valid only after `open()` (it now depends on page size). Emptying or dropping the unnamed (main) DBI ends the write transaction: only `commit` or `abort` may follow.
+
 ## Performance Considerations
 
 - LMDB is memory-mapped, providing exceptional read performance
@@ -285,7 +306,7 @@ The `kotlin-lmdb-wasm` Gradle plugin is **required** when using the wasmJs targe
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     // Add this plugin when using wasmJs target
-    id("io.github.crowded-libs.kotlin-lmdb-wasm") version "0.3.6"
+    id("io.github.crowded-libs.kotlin-lmdb-wasm") version "0.5.0"
 }
 
 kotlin {
@@ -294,7 +315,7 @@ kotlin {
     }
     sourceSets {
         commonMain.dependencies {
-            implementation("io.github.crowded-libs:kotlin-lmdb:0.3.6")
+            implementation("io.github.crowded-libs:kotlin-lmdb:0.5.0")
         }
     }
 }

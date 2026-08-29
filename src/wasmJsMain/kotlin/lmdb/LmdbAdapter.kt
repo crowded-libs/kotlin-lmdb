@@ -49,6 +49,13 @@ object LMDB {
     fun mdb_env_set_maxdbs(envPtr: Int, maxDbs: Int): Int = _mdb_env_set_maxdbs(envPtr, maxDbs)
     
     fun mdb_env_set_mapsize(envPtr: Int, size: Double): Int = _mdb_env_set_mapsize(envPtr, size)
+
+    fun mdb_env_set_pagesize(envPtr: Int, size: Int): Int = _mdb_env_set_pagesize(envPtr, size)
+
+    fun kmdb_env_set_encrypt_chacha8(envPtr: Int, keyPtr: Int, keylen: Int): Int =
+        _kmdb_env_set_encrypt_chacha8(envPtr, keyPtr, keylen)
+
+    fun kmdb_env_set_checksum_crc32(envPtr: Int): Int = _kmdb_env_set_checksum_crc32(envPtr)
     
     fun mdb_env_get_maxreaders(envPtr: Int, readersPtr: Int): Int = _mdb_env_get_maxreaders(envPtr, readersPtr)
     

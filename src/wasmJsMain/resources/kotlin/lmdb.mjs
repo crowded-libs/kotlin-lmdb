@@ -5437,6 +5437,7 @@ var _mdb_env_copy2 = Module['_mdb_env_copy2'] = makeInvalidEarlyAccess('_mdb_env
 var _mdb_env_copy = Module['_mdb_env_copy'] = makeInvalidEarlyAccess('_mdb_env_copy');
 var _mdb_env_set_flags = Module['_mdb_env_set_flags'] = makeInvalidEarlyAccess('_mdb_env_set_flags');
 var _mdb_env_get_flags = Module['_mdb_env_get_flags'] = makeInvalidEarlyAccess('_mdb_env_get_flags');
+var _mdb_env_set_pagesize = Module['_mdb_env_set_pagesize'] = makeInvalidEarlyAccess('_mdb_env_set_pagesize');
 var _mdb_env_stat = Module['_mdb_env_stat'] = makeInvalidEarlyAccess('_mdb_env_stat');
 var _mdb_env_info = Module['_mdb_env_info'] = makeInvalidEarlyAccess('_mdb_env_info');
 var _mdb_dbi_open = Module['_mdb_dbi_open'] = makeInvalidEarlyAccess('_mdb_dbi_open');
@@ -5446,6 +5447,8 @@ var _mdb_dbi_flags = Module['_mdb_dbi_flags'] = makeInvalidEarlyAccess('_mdb_dbi
 var _mdb_drop = Module['_mdb_drop'] = makeInvalidEarlyAccess('_mdb_drop');
 var _mdb_env_get_maxkeysize = Module['_mdb_env_get_maxkeysize'] = makeInvalidEarlyAccess('_mdb_env_get_maxkeysize');
 var _mdb_reader_check = Module['_mdb_reader_check'] = makeInvalidEarlyAccess('_mdb_reader_check');
+var _kmdb_env_set_encrypt_chacha8 = Module['_kmdb_env_set_encrypt_chacha8'] = makeInvalidEarlyAccess('_kmdb_env_set_encrypt_chacha8');
+var _kmdb_env_set_checksum_crc32 = Module['_kmdb_env_set_checksum_crc32'] = makeInvalidEarlyAccess('_kmdb_env_set_checksum_crc32');
 var _access = Module['_access'] = makeInvalidEarlyAccess('_access');
 var _closedir = Module['_closedir'] = makeInvalidEarlyAccess('_closedir');
 var _fflush = makeInvalidEarlyAccess('_fflush');
@@ -5501,6 +5504,7 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['mdb_env_copy'] != 'undefined', 'missing Wasm export: mdb_env_copy');
   assert(typeof wasmExports['mdb_env_set_flags'] != 'undefined', 'missing Wasm export: mdb_env_set_flags');
   assert(typeof wasmExports['mdb_env_get_flags'] != 'undefined', 'missing Wasm export: mdb_env_get_flags');
+  assert(typeof wasmExports['mdb_env_set_pagesize'] != 'undefined', 'missing Wasm export: mdb_env_set_pagesize');
   assert(typeof wasmExports['mdb_env_stat'] != 'undefined', 'missing Wasm export: mdb_env_stat');
   assert(typeof wasmExports['mdb_env_info'] != 'undefined', 'missing Wasm export: mdb_env_info');
   assert(typeof wasmExports['mdb_dbi_open'] != 'undefined', 'missing Wasm export: mdb_dbi_open');
@@ -5510,6 +5514,8 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['mdb_drop'] != 'undefined', 'missing Wasm export: mdb_drop');
   assert(typeof wasmExports['mdb_env_get_maxkeysize'] != 'undefined', 'missing Wasm export: mdb_env_get_maxkeysize');
   assert(typeof wasmExports['mdb_reader_check'] != 'undefined', 'missing Wasm export: mdb_reader_check');
+  assert(typeof wasmExports['kmdb_env_set_encrypt_chacha8'] != 'undefined', 'missing Wasm export: kmdb_env_set_encrypt_chacha8');
+  assert(typeof wasmExports['kmdb_env_set_checksum_crc32'] != 'undefined', 'missing Wasm export: kmdb_env_set_checksum_crc32');
   assert(typeof wasmExports['access'] != 'undefined', 'missing Wasm export: access');
   assert(typeof wasmExports['closedir'] != 'undefined', 'missing Wasm export: closedir');
   assert(typeof wasmExports['fflush'] != 'undefined', 'missing Wasm export: fflush');
@@ -5562,6 +5568,7 @@ function assignWasmExports(wasmExports) {
   _mdb_env_copy = Module['_mdb_env_copy'] = createExportWrapper('mdb_env_copy', 2);
   _mdb_env_set_flags = Module['_mdb_env_set_flags'] = createExportWrapper('mdb_env_set_flags', 3);
   _mdb_env_get_flags = Module['_mdb_env_get_flags'] = createExportWrapper('mdb_env_get_flags', 2);
+  _mdb_env_set_pagesize = Module['_mdb_env_set_pagesize'] = createExportWrapper('mdb_env_set_pagesize', 2);
   _mdb_env_stat = Module['_mdb_env_stat'] = createExportWrapper('mdb_env_stat', 2);
   _mdb_env_info = Module['_mdb_env_info'] = createExportWrapper('mdb_env_info', 2);
   _mdb_dbi_open = Module['_mdb_dbi_open'] = createExportWrapper('mdb_dbi_open', 4);
@@ -5571,6 +5578,8 @@ function assignWasmExports(wasmExports) {
   _mdb_drop = Module['_mdb_drop'] = createExportWrapper('mdb_drop', 3);
   _mdb_env_get_maxkeysize = Module['_mdb_env_get_maxkeysize'] = createExportWrapper('mdb_env_get_maxkeysize', 1);
   _mdb_reader_check = Module['_mdb_reader_check'] = createExportWrapper('mdb_reader_check', 2);
+  _kmdb_env_set_encrypt_chacha8 = Module['_kmdb_env_set_encrypt_chacha8'] = createExportWrapper('kmdb_env_set_encrypt_chacha8', 3);
+  _kmdb_env_set_checksum_crc32 = Module['_kmdb_env_set_checksum_crc32'] = createExportWrapper('kmdb_env_set_checksum_crc32', 1);
   _access = Module['_access'] = createExportWrapper('access', 2);
   _closedir = Module['_closedir'] = createExportWrapper('closedir', 1);
   _fflush = createExportWrapper('fflush', 1);

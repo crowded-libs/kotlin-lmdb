@@ -24,7 +24,7 @@ actual fun lmdbVersion(): LmdbVersion {
 
         return LmdbVersion(major, minor, patch)
     } catch (e: Throwable) {
-        return LmdbVersion(0, 9, 35)
+        return LmdbVersion(1, 0, 1)
     } finally {
         if (majorPtr != 0) LMDB.free(majorPtr)
         if (minorPtr != 0) LMDB.free(minorPtr)

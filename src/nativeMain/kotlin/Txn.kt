@@ -28,7 +28,7 @@ actual class Txn internal actual constructor(val env: Env, parent: Txn?, vararg 
     }
 
     actual fun begin(vararg options: TxnOption) : Txn {
-        return Txn(env, this)
+        return Txn(env, this, *options)
     }
 
     actual fun abort() {

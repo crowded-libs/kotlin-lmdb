@@ -125,6 +125,55 @@ actual class Env : AutoCloseable {
             field = value
         }
 
+    actual var pageSize: UInt = 0u
+        set(value) {
+            if (isOpened) throw LmdbException("Env is already open")
+            val result = LMDB.mdb_env_set_pagesize(ptr, value.toInt())
+            if (result != 0) {
+                throw LmdbException(native_mdb_strerror(result))
+            }
+            field = value
+        }
+
+    actual fun setEncryptionChaCha8(key: ByteArray) {
+        if (isOpened) throw LmdbException("Env is already open")
+        if (key.size != 32) throw LmdbException("ChaCha8 key must be 32 bytes")
+        val keyPtr = bytesToPtr(key)
+        try {
+            val result = LMDB.kmdb_env_set_encrypt_chacha8(ptr, keyPtr, key.size)
+            if (result != 0) {
+                throw LmdbException(native_mdb_strerror(result))
+            }
+        } finally {
+            LMDB.free(keyPtr)
+        }
+    }
+
+    actual fun setEncryption(key: ByteArray, encryptor: EnvEncryptor, macBytes: UInt) {
+        if (macBytes != 0u) throw LmdbException("AEAD macBytes is not supported")
+        throw LmdbException("custom encryption is not supported on wasmJs")
+    }
+
+    actual fun setChecksumCrc32() {
+        if (isOpened) throw LmdbException("Env is already open")
+        val result = LMDB.kmdb_env_set_checksum_crc32(ptr)
+        if (result != 0) {
+            throw LmdbException(native_mdb_strerror(result))
+        }
+    }
+
+    actual fun setChecksum(checksum: EnvChecksum, size: UInt) {
+        throw LmdbException("custom checksum is not supported on wasmJs")
+    }
+
+    private fun bytesToPtr(bytes: ByteArray): Int {
+        val ptr = LMDB.malloc(bytes.size)
+        for (i in bytes.indices) {
+            LMDB.setValue(ptr + i, bytes[i].toInt() and 0xFF, "i8")
+        }
+        return ptr
+    }
+
     actual val stat: Stat?
         get() {
             if (!isOpened) return null

@@ -48,6 +48,30 @@ internal object LmdbJna {
         return lib.mdb_env_set_mapsize(env, size)
     }
 
+    fun mdb_env_set_pagesize(env: Pointer, size: Int): Int {
+        return lib.mdb_env_set_pagesize(env, size)
+    }
+
+    fun kmdb_env_set_encrypt_chacha8(env: Pointer, key: Pointer, keylen: Int): Int {
+        return lib.kmdb_env_set_encrypt_chacha8(env, key, keylen)
+    }
+
+    fun kmdb_env_set_checksum_crc32(env: Pointer): Int {
+        return lib.kmdb_env_set_checksum_crc32(env)
+    }
+
+    fun kmdb_env_set_encrypt_slot(env: Pointer, slot: Int, key: Pointer, keylen: Int, mac: Int): Int {
+        return lib.kmdb_env_set_encrypt_slot(env, slot, key, keylen, mac)
+    }
+
+    fun kmdb_env_set_checksum_slot(env: Pointer, slot: Int, size: Int): Int {
+        return lib.kmdb_env_set_checksum_slot(env, slot, size)
+    }
+
+    fun kmdb_set_host_callbacks(enc: LmdbLibrary.KmdbEncHostCb?, sum: LmdbLibrary.KmdbSumHostCb?) {
+        lib.kmdb_set_host_callbacks(enc, sum)
+    }
+
     fun mdb_env_set_maxreaders(env: Pointer, readers: Int): Int {
         return lib.mdb_env_set_maxreaders(env, readers)
     }

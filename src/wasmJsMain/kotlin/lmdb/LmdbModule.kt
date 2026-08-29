@@ -41,6 +41,15 @@ external fun _mdb_env_set_maxdbs(envPtr: Int, maxDbs: Int): Int
 @WasmImport("./lmdb-wrapper.mjs", "_mdb_env_set_mapsize")
 external fun _mdb_env_set_mapsize(envPtr: Int, size: Double): Int
 
+@WasmImport("./lmdb-wrapper.mjs", "_mdb_env_set_pagesize")
+external fun _mdb_env_set_pagesize(envPtr: Int, size: Int): Int
+
+@WasmImport("./lmdb-wrapper.mjs", "_kmdb_env_set_encrypt_chacha8")
+external fun _kmdb_env_set_encrypt_chacha8(envPtr: Int, keyPtr: Int, keylen: Int): Int
+
+@WasmImport("./lmdb-wrapper.mjs", "_kmdb_env_set_checksum_crc32")
+external fun _kmdb_env_set_checksum_crc32(envPtr: Int): Int
+
 @WasmImport("./lmdb-wrapper.mjs", "_mdb_env_get_maxreaders")
 external fun _mdb_env_get_maxreaders(envPtr: Int, readersPtr: Int): Int
 

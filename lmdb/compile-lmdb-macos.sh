@@ -3,8 +3,23 @@
 if [ ! -d "lmdb" ]; then
   git clone https://git.openldap.org/openldap/openldap.git lmdb
 fi
-cd ./lmdb/libraries/liblmdb || exit
-git checkout LMDB_0.9.35
+cd ./lmdb || exit
+git fetch --tags origin
+git checkout --detach 3e655fa3ed
+cd libraries/liblmdb || exit
+
+# Overlay kotlin-lmdb vendored C (freelist_save patch, kmdb_ext, chacha8).
+CINTEROP_C="$(cd ../../../.. && pwd)/src/nativeInterop/cinterop/c"
+cp "$CINTEROP_C/mdb.c" "$CINTEROP_C/lmdb.h" "$CINTEROP_C/midl.c" "$CINTEROP_C/midl.h" \
+   "$CINTEROP_C/chacha8.c" "$CINTEROP_C/chacha8.h" "$CINTEROP_C/kmdb_ext.c" "$CINTEROP_C/kmdb_ext.h" .
+# Link kmdb_ext + chacha8 into the shared library.
+if ! grep -q kmdb_ext.lo Makefile; then
+  sed -i.bak \
+    -e 's/liblmdb$(SOFULL):	mdb.lo midl.lo module.lo/liblmdb$(SOFULL):	mdb.lo midl.lo module.lo chacha8.lo kmdb_ext.lo/' \
+    -e 's/mdb.lo midl.lo module.lo $(SOLIBS)/mdb.lo midl.lo module.lo chacha8.lo kmdb_ext.lo $(SOLIBS)/' \
+    Makefile
+  printf '\nchacha8.lo: chacha8.c chacha8.h\n\t$(CC) $(CFLAGS) -fPIC $(CPPFLAGS) -c chacha8.c -o $@\n\nkmdb_ext.lo: kmdb_ext.c kmdb_ext.h lmdb.h\n\t$(CC) $(CFLAGS) -fPIC $(CPPFLAGS) -c kmdb_ext.c -o $@\n' >> Makefile
+fi
 
 declare -A build_outputs
 declare -A supported_targets=(

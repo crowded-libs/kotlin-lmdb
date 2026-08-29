@@ -86,6 +86,67 @@ actual class Env : AutoCloseable {
             field = value
         }
 
+    actual var pageSize: UInt = 0u
+        set(value) {
+            checkOpened(false)
+            check(mdb_env_set_pagesize(ptr, value.toInt()))
+            field = value
+        }
+
+    private var encryptSlot: Int? = null
+    private var checksumSlot: Int? = null
+
+    actual fun setEncryptionChaCha8(key: ByteArray) {
+        checkOpened(false)
+        if (key.size != 32) throw LmdbException("ChaCha8 key must be 32 bytes")
+        key.usePinned { pinned ->
+            check(kmdb_env_set_encrypt_chacha8(ptr, pinned.addressOf(0), key.size.toUInt()))
+        }
+    }
+
+    actual fun setEncryption(key: ByteArray, encryptor: EnvEncryptor, macBytes: UInt) {
+        checkOpened(false)
+        if (macBytes != 0u) throw LmdbException("AEAD macBytes is not supported")
+        if (key.isEmpty()) throw LmdbException("Encryption key must not be empty")
+        EnvCryptoHost.install()
+        encryptSlot?.let { EnvCryptoRegistry.freeEncryptor(it) }
+        val slot = EnvCryptoRegistry.allocEncryptor(encryptor)
+        encryptSlot = slot
+        val rc = key.usePinned { pinned ->
+            kmdb_env_set_encrypt_slot(ptr, slot, pinned.addressOf(0), key.size.toUInt(), macBytes)
+        }
+        if (rc != 0) {
+            EnvCryptoRegistry.freeEncryptor(slot)
+            encryptSlot = null
+            check(rc)
+        }
+    }
+
+    actual fun setChecksumCrc32() {
+        checkOpened(false)
+        check(kmdb_env_set_checksum_crc32(ptr))
+    }
+
+    actual fun setChecksum(checksum: EnvChecksum, size: UInt) {
+        checkOpened(false)
+        if (size == 0u) throw LmdbException("Checksum size must be greater than 0")
+        EnvCryptoHost.install()
+        checksumSlot?.let { EnvCryptoRegistry.freeChecksum(it) }
+        val slot = EnvCryptoRegistry.allocChecksum(checksum)
+        checksumSlot = slot
+        val rc = kmdb_env_set_checksum_slot(ptr, slot, size)
+        if (rc != 0) {
+            EnvCryptoRegistry.freeChecksum(slot)
+            checksumSlot = null
+            check(rc)
+        }
+    }
+
+    private fun checkOpened(mustBeOpen: Boolean) {
+        if (mustBeOpen && !isOpened) throw LmdbException("Env is not open")
+        if (!mustBeOpen && isOpened) throw LmdbException("Env is already open")
+    }
+
     @OptIn(UnsafeNumber::class)
     actual val stat: Stat?
         get() {
@@ -144,6 +205,10 @@ actual class Env : AutoCloseable {
         if (isOpened) {
             mdb_env_close(ptr)
         }
+        encryptSlot?.let { EnvCryptoRegistry.freeEncryptor(it) }
+        checksumSlot?.let { EnvCryptoRegistry.freeChecksum(it) }
+        encryptSlot = null
+        checksumSlot = null
         isClosed = true
     }
 }
