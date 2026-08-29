@@ -7,7 +7,7 @@ import javax.inject.Inject
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.android.kmp.library)
     alias(libs.plugins.dokka)
     alias(libs.plugins.maven.publish)
 }
@@ -56,10 +56,14 @@ kotlin {
             useJUnitPlatform()
         }
     }
-    androidTarget {
+    android {
+        namespace = "lmdb"
+        compileSdk = libs.versions.android.compileSdk.get().toInt()
+        minSdk = 24
         compilerOptions {
-            jvmTarget = JvmTarget.JVM_21
+            jvmTarget.set(JvmTarget.JVM_21)
         }
+        withHostTest {}
     }
     mingwX64()
     linuxX64()
@@ -180,7 +184,7 @@ kotlin {
         val androidMain by getting {
             dependsOn(jvmCommonMain)
         }
-        val androidUnitTest by getting {
+        val androidHostTest by getting {
             dependsOn(jvmCommonTest)
             resources.srcDirs(jvmCommonMain.resources.srcDirs)
         }
@@ -229,7 +233,9 @@ tasks {
         testLogging {
             showStandardStreams = true
         }
-        if (name.startsWith("test") && name.endsWith("UnitTest")) {
+        if (name.contains("HostTest", ignoreCase = true) ||
+            (name.startsWith("test") && name.endsWith("UnitTest"))
+        ) {
             systemProperty("lmdb.native.lib", hostLmdbNativeLibrary.absolutePath)
         }
     }
@@ -244,24 +250,11 @@ tasks.named("downloadKotlinNativeDistribution") {
     outputs.file(layout.buildDirectory.file("konan.txt"))
 }
 
-android {
-    namespace = "lmdb"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
-
-    sourceSets {
-        getByName("main") {
-            jniLibs.srcDirs("src/jvmCommonMain/resources/jniLibs")
-            resources.srcDirs("src/jvmCommonMain/resources")
-        }
-    }
-
-    defaultConfig {
-        minSdk = 24
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+androidComponents {
+    onVariants { variant ->
+        variant.sources.jniLibs?.addStaticSourceDirectory(
+            "src/jvmCommonMain/resources/jniLibs"
+        )
     }
 }
 
